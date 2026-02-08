@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 function Topnav() {
     const [isOpen, setIsOpen] = useState(false);
@@ -9,16 +9,21 @@ function Topnav() {
                 <div className="flex justify-between h-16 items-center">
                     {/* Logo Section */}
                     <div className="flex-shrink-0 flex items-center">
-                        <span className="text-2xl font-bold text-blue-600">Brand</span>
+                        <span className="text-2xl font-bold text-blue-600">DOLE</span>
                     </div>
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex space-x-8 items-center">
-                        <a href="#" className="text-gray-600 hover:text-blue-600 transition">Home</a>
-                        <a href="#" className="text-gray-600 hover:text-blue-600 transition">Solutions</a>
-                        <a href="#" className="text-gray-600 hover:text-blue-600 transition">Pricing</a>
+
+                        
+                        {/*
+                            <a href="#" className="text-gray-600 hover:text-blue-600 transition">Home</a>
+                            <a href="#" className="text-gray-600 hover:text-blue-600 transition">Solutions</a>
+                            <a href="#" className="text-gray-600 hover:text-blue-600 transition">Pricing</a>
+                        */}
+                      
                         <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
-                            Get Started
+                            Apply now
                         </button>
                     </div>
 

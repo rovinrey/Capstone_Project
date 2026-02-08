@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import StatCard from "../components/Card";
@@ -11,7 +10,7 @@ function AdminDashboard() {
         employment_rate: 0
     });
 
-    const [recentApps, setRecentApps] = useState([
+    const [recentApps, setRecentApps] = useState([  
         { id: 1, name: "Juan Dela Cruz", program: "TUPAD", status: "Pending", date: "2026-01-14" },
         { id: 2, name: "Maria Clara", program: "SPES", status: "Approved", date: "2026-01-13" },
         { id: 3, name: "Jose Rizal", program: "DILP", status: "Under Review", date: "2026-01-12" },
@@ -20,7 +19,6 @@ function AdminDashboard() {
     return (
         <div className="flex min-h-screen bg-gray-50">
             {/* Sidebar Stays on the left */}
-            <Sidebar />
 
             <main className="flex-1 p-8">
                 {/* Header section */}
@@ -43,7 +41,7 @@ function AdminDashboard() {
                         <h2 className="text-xl font-semibold text-gray-800">Recent Applications</h2>
                         <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">View All</button>
                     </div>
-                    
+
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-semibold">
@@ -67,9 +65,9 @@ function AdminDashboard() {
                                         <td className="px-6 py-4 text-gray-500">{app.date}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                                                ${app.status === 'Approved' ? 'bg-green-100 text-green-700' : 
-                                                  app.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 
-                                                  'bg-gray-100 text-gray-700'}`}>
+                                                ${app.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                                                    app.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-gray-100 text-gray-700'}`}>
                                                 {app.status}
                                             </span>
                                         </td>

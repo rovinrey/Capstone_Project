@@ -9,12 +9,14 @@ import {
 } from 'lucide-react';
 
 function Sidebar() {
+
+    // menus 
     const menuItems = [
-        { name: "Dashboard", path: "/", icon: <LayoutDashboard size={18} /> },
-        { name: "Beneficiary", path: "/beneficiary", icon: <Users size={18} /> },
-        { name: "Payment", path: "/payment", icon: <CreditCard size={18} /> },
-        { name: "Programs", path: "/programs", icon: <ClipboardList size={18} /> },
-        { name: "Reports", path: "/reports", icon: <BarChart3 size={18} /> },
+        { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
+        { name: "Beneficiary", path: "/beneficiarytabs", icon: <Users size={18} /> },
+        { name: "Payment", path: "admin/payment", icon: <CreditCard size={18} /> },
+        { name: "Programs", path: "admin/programs", icon: <ClipboardList size={18} /> },
+        { name: "Reports", path: "admin/reports", icon: <BarChart3 size={18} /> },
     ];
 
     return (

@@ -1,29 +1,42 @@
-import { BrowserRouter, Routes} from 'react-router-dom';
-//import LoginPage from './pages/LoginPage';
-//import SignupPage from './pages/SignupPage';
-
-// admindashboard
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 import AdminDashboard from './pages/AdminDashboard';
-//import BeneficiaryDasboard from './pages/BeneficiaryDashboard';<BeneficiaryDasboard />
+import BeneficiaryDashboard from './pages/BeneficiaryDashboard';
+import ProtectedRoute from './components/ProtectedRoute'; // we'll create this
 
 function App() {
   return (
-    <>
-      <BrowserRouter>
-      
-       <AdminDashboard />
-        <Routes>
-          {/*<Route path="/" element={<Navigate to="/login" />} />
-              <Route path='/login' element={<LoginPage />} />
-              <Route path='/signup' element={<SignupPage />} />*/}
-           
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
 
-              
-         
-        </Routes>
+        {/* Admin Protected Route */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      </BrowserRouter>
-    </>
+        {/* Beneficiary Protected Route */}
+        <Route
+          path="/beneficiary"
+          element={
+            <ProtectedRoute allowedRole="beneficiary">
+              <BeneficiaryDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default redirect */}
+        <Route path="/" element={<Navigate to="/login" />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
