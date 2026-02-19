@@ -1,8 +1,9 @@
+import type { JSX } from 'react';
 import { Navigate } from 'react-router-dom';
 
 interface ProtectedRouteProps {
   children: JSX.Element;
-  allowedRole: 'admin' | 'beneficiary';
+  allowedRole: 'admin' | 'beneficiary' | 'staff';
 }
 
 const ProtectedRoute = ({ children, allowedRole }: ProtectedRouteProps) => {
@@ -16,11 +17,18 @@ const ProtectedRoute = ({ children, allowedRole }: ProtectedRouteProps) => {
 
   // 3. If the user's role doesn't match the required role for this page
   if (userRole !== allowedRole) {
-    // Redirect them to their own correct dashboard if they try to snoop
-    return <Navigate to={userRole === 'admin' ? '/admin' : '/beneficiary'} replace />;
+    // Determine the redirect path based on their actual role
+    let redirectPath = '/beneficiary'; // Default fallback
+    
+    if (userRole === 'admin') {
+      redirectPath = '/admin';
+    } else if (userRole === 'staff') {
+      redirectPath = '/staff'; // Added staff redirect path
+    }
+
+    return <Navigate to={redirectPath} replace />;
   }
 
-  // 4. Everything is fine, show the page
   return children;
 };
 

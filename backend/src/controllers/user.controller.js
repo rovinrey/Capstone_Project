@@ -1,5 +1,5 @@
 // 1. Use require instead of import
-const { createUser, getAllUsers, submitTupadApplication } = require("../services/user.services");
+const { createUser, getAllUsers, submitTupadApplication,submit_DILP_Application} = require("../services/user.services");
 
 // 2. Remove "export" keyword and TypeScript types (Request/Response)
 async function addUser(req, res) {
@@ -20,6 +20,7 @@ const fetchUsers = async (req, res) => {
   }
 };
 
+// tupad controller 
 const postTupadForm = async (req, res) => {
   try {
     const result = await submitTupadApplication(req.body);
@@ -34,9 +35,25 @@ const postTupadForm = async (req, res) => {
   }
 };
 
+// DILP controllers
+const postDilpForm = async (req, res) => {
+  try {
+    const result = await submit_DILP_Application(req.body);
+    req.status(201).json({
+      success: true,
+      message: 'Appication submitted!',
+      id: result.insertId
+    });
+  } catch (error) {
+    console.error('erroe detected: ', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // 3. Export everything together at the bottom
 module.exports = { 
   addUser, 
   fetchUsers, 
-  postTupadForm 
+  postTupadForm ,
+  postDilpForm
 };

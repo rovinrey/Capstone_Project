@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -7,18 +7,35 @@ import {
   BarChart3, 
   LogOut 
 } from 'lucide-react';
+import { logout as clearAuth } from '../utils/auth';
 
-function Sidebar() {
+
+function Sidebar() { 
 
     // menus 
     const menuItems = [
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
-        { name: "Beneficiary", path: "/beneficiarytabs", icon: <Users size={18} /> },
-        { name: "Payment", path: "admin/payment", icon: <CreditCard size={18} /> },
-        { name: "Programs", path: "admin/programs", icon: <ClipboardList size={18} /> },
-        { name: "Reports", path: "admin/reports", icon: <BarChart3 size={18} /> },
+        { name: "Beneficiary", path: "/beneficiaries", icon: <Users size={18} /> },
+        { name: "Payment", path: "/payment", icon: <CreditCard size={18} /> },
+        { name: "Programs", path: "/programs", icon: <ClipboardList size={18} /> },
+        { name: "Reports", path: "/reports", icon: <BarChart3 size={18} /> },
     ];
 
+    const navigate = useNavigate();
+
+    const logout = async () => {
+        // clear client-side storage
+        clearAuth();
+
+        // optionally hit backend for audit or cookie clearance
+        try {
+            await fetch('http://localhost:5000/logout', { method: 'POST' });
+        } catch {
+            // ignore network errors, user is logging out anyway
+        }
+
+        navigate('/login');
+    }
     return (
         <aside className="w-64 min-h-screen bg-white border-r border-gray-200 flex flex-col sticky top-0">
             {/* Logo Section */}

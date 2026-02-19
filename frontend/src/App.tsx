@@ -1,9 +1,37 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import AdminDashboard from './pages/AdminDashboard';
-import BeneficiaryDashboard from './pages/BeneficiaryDashboard';
-import ProtectedRoute from './components/ProtectedRoute'; // we'll create this
+
+import BeneficiaryDashboard from './pages/beneficiary/BeneficiaryDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
+
+import Sidebar from "./components/Sidebar"; // Check your actual path here
+import AdminDashboard from './pages/admin/navigation/AdminDashboard';
+import Beneficiaries from './pages/admin/navigation/Beneficiary';
+import Programs from './pages/admin/navigation/Programs';
+import Payment from './pages/admin/navigation/Payment'
+import Reports from './pages/admin/navigation/Reports';
+import ApplicationApproval from './pages/admin/navigation/ApplicationApproval';
+
+import StaffDashboard from './pages/staff/StaffDashboard';
+
+// 1. Create an Admin Layout so the Sidebar is persistent
+const AdminLayout = () => (
+  <div className="flex bg-gray-50 min-h-screen">
+    <Sidebar />
+    <main className="flex-1 p-8">
+      <Outlet /> {/* This is where the sub-pages like Programs will render */}
+    </main>
+  </div>
+);
+const StaffLayout = () => (
+  <div className="flex bg-gray-50 min-h-screen">
+    <Sidebar />
+    <main className="flex-1 p-8">
+      <Outlet /> {/* This is where the sub-pages like Programs will render */}
+    </main>
+  </div>
+);
 
 function App() {
   return (
@@ -13,17 +41,44 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
 
-        {/* Admin Protected Route */}
+        {/* Admin Protected Routes with Sidebar */}
         <Route
-          path="/admin"
           element={
             <ProtectedRoute allowedRole="admin">
-              <AdminDashboard />
+              <AdminLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          {/* All these paths will now show the Sidebar */}
+          <Route path="/dashboard" element={<AdminDashboard />} />
+          <Route path="/beneficiaries" element={<Beneficiaries />} />
+          <Route path="/programs" element={<Programs />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/payment" element={<Payment />} />
+          <Route path="/applications" element={<ApplicationApproval />} />
+          
+          {/* Redirect /admin to /dashboard */}
+          <Route path="/admin" element={<Navigate to="/dashboard" />} />
 
-        {/* Beneficiary Protected Route */}
+        </Route>
+        
+        {/* Staff Protected Routes with Sidebar - reuse Admin UI */}
+        <Route
+          element={
+            <ProtectedRoute allowedRole="staff">
+              <StaffLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/staff" element={<StaffDashboard />} />
+          <Route path="/beneficiaries" element={<Beneficiaries />} />
+          <Route path="/programs" element={<Programs />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/payment" element={<Payment />} />
+        </Route>
+
+
+        {/* Beneficiary Protected Route (No Admin Sidebar) */}
         <Route
           path="/beneficiary"
           element={
@@ -32,6 +87,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/login" />} />

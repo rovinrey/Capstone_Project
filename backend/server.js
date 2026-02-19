@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./src/config/db.js'); 
 const formRoutes = require('./src/routes/form.routes.js');
+const programRoutes = require('./src/routes/program.routes.js');
+// new beneficiary route to expose approved applications as beneficiaries
+const beneficiaryRoutes = require('./src/routes/beneficiary.routes.js');
 
 const app = express();
 
@@ -12,6 +15,8 @@ app.use(express.json()); // express.json() is the standard way to get json middl
 // --- SIGNUP ROUTE ---
 app.post('/signup', async (req, res) => {
     const { email, phone, password, fullName } = req.body;
+    // allow optional role (admin/staff/beneficiary) when creating users
+    const role = req.body.role || 'beneficiary';
 
     try {
         const query = `
@@ -19,11 +24,18 @@ app.post('/signup', async (req, res) => {
             VALUES (?, ?, ?, ?, 'beneficiary')
         `;
 
-        await db.execute(query, [
+        // use parameterized role instead of hardcoded string
+        const finalQuery = `
+            INSERT INTO users (email, phone, password, fullName, role) 
+            VALUES (?, ?, ?, ?, ?)
+        `;
+
+        await db.execute(finalQuery, [
             email || null,
             phone || null,
             password,
-            fullName
+            fullName,
+            role
         ]);
 
         res.status(201).json({ message: "Registration successful!" });
@@ -72,8 +84,21 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// --- LOGOUT ROUTE ---
+// simple endpoint to handle client logout requests. because we use
+// JWTs and store everything in localStorage there is nothing to clear
+// server‑side, but exposing a route allows the frontend to hit it if
+// needed (e.g. to clear cookies or for audit logging in the future).
+app.post('/logout', (req, res) => {
+    // if session or cookies were used we'd destroy them here
+    res.status(200).json({ message: 'Logged out' });
+});
+
 // --- SYSTEM ROUTES ---
 app.use('/api/forms', formRoutes);
+app.use('/api/programs', programRoutes);
+// expose beneficiaries endpoint so frontend can fetch approved applicants
+app.use('/api/beneficiaries', beneficiaryRoutes);
 
 const PORT = 5000;
 app.listen(PORT, () => {

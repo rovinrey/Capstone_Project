@@ -20,7 +20,7 @@ function TupadForm() {
         name_of_beneficiary: '',
         program_type: 'TUPAD',
     });
-
+    
     const [loading, setLoading] = useState(false);
 
     // 2. Handle input changes (converts numbers for MySQL decimal/int types)
