@@ -87,69 +87,56 @@ exports.approveApplication = async (id) => {
 
         const app = rows[0];
 
-        // 2. Insert into the 'beneficiaries' table
-        // Note: Map your application columns to your beneficiary table columns
+        // 2. Insert into beneficiaries table
         const insertQuery = `
-            INSERT INTO beneficiaries (
-                fullName, 
-                phone, 
-                email, 
-                barangay_id, 
-                program_type,
-                approved_at
-            ) VALUES (?, ?, ?, ?, ?, NOW())
-        `;
-
-        // Concatenate names for the fullName column in the beneficiary table
-        const fullName = `${app.first_name} ${app.middle_name ? app.middle_name + ' ' : ''}${app.last_name}`;
-
-        await connection.execute(insertQuery, [
-            fullName,
-            app.contact_number,
-            app.email || null, // Ensure email exists or is null
-            app.barangay_id || null, // The column we added earlier
+            INSERT INTO applications (
+                first_name, middle_name, last_name, birthday, age,
+                gender, civil_status, contact_number, occupation,
+                monthly_income, valid_id_type, id_number,
+                name_of_beneficiary, program_type, approval_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        `;  
+        const insertValues = [
+            app.first_name,
+            app.middle_name,    
+            app.last_name,
+            app.birthday,
+            app.age,    
+            app.gender,
+            app.civil_status,
+            app.contact_number, 
+            app.occupation,
+            app.monthly_income,
+            app.valid_id_type,  
+            app.id_number,
+            app.name_of_beneficiary,
             app.program_type
-        ]);
+        ];
+        await connection.execute(insertQuery, insertValues);
 
-        // 3. Update the status in the original applications table
+        // 3. Update application status to 'Approved'   
         const updateQuery = `
             UPDATE applications
-            SET status = 'Approved', 
-                approval_date = NOW(), 
-                updated_at = NOW() 
+            SET status = 'Approved', updated_at = NOW()
             WHERE id = ?
         `;
         await connection.execute(updateQuery, [id]);
 
         await connection.commit();
-        return { success: true };
-
     } catch (error) {
         await connection.rollback();
-        console.error("Approval Transaction Failed:", error.message);
         throw error;
     } finally {
-        connection.release(); // Always release connection back to pool
+        connection.release();
     }
 };
-/*
-exports.approveApplication = async (id) => {
+
+// Reject application by ID with optional reason
+exports.rejectApplication = async (id, ) => {
     const query = `
         UPDATE applications
-        SET status = 'Approved', approval_date = NOW(), updated_at = NOW()
+        SET status = 'Rejected',  updated_at = NOW()
         WHERE id = ?
     `;
     return await db.execute(query, [id]);
-};
-*/
-
-
-// Reject application by ID with optional reason
-exports.rejectApplication = async (id, reason = null) => {
-    const query = `
-        UPDATE applications
-        SET status = 'Rejected', rejection_reason = ?, updated_at = NOW()
-        WHERE id = ?
-    `;
-    return await db.execute(query, [reason, id]);
 };

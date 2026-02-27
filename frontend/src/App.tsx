@@ -16,23 +16,32 @@ import ApplicationApproval from './pages/admin/navigation/ApplicationApproval';
 import StaffDashboard from './pages/staff/StaffDashboard';
 
 // 1. Create an Admin Layout so the Sidebar is persistent
+// 1. Create an Admin Layout with a FIXED Sidebar
 const AdminLayout = () => (
-  <div className="flex bg-gray-50 min-h-screen">
-    <Sidebar />
-    <main className="flex-1 p-8">
-      <Outlet /> {/* This is where the sub-pages like Programs will render */}
-    </main>
-  </div>
-);
-const StaffLayout = () => (
-  <div className="flex bg-gray-50 min-h-screen">
-    <Sidebar />
-    <main className="flex-1 p-8">
-      <Outlet /> {/* This is where the sub-pages like Programs will render */}
+  <div className="flex bg-gray-50 h-screen overflow-hidden">
+    {/* Sidebar wrapper to ensure it takes full height and doesn't shrink */}
+    <div className="w-64 h-full flex-shrink-0 border-r bg-white">
+      <Sidebar />
+    </div>
+
+    {/* Main content area that scrolls independently */}
+    <main className="flex-1 overflow-y-auto p-8">
+      <Outlet />
     </main>
   </div>
 );
 
+// Do the same for StaffLayout
+const StaffLayout = () => (
+  <div className="flex bg-gray-50 h-screen overflow-hidden">
+    <div className="w-64 h-full flex-shrink-0 border-r bg-white">
+      <Sidebar />
+    </div>
+    <main className="flex-1 overflow-y-auto p-8">
+      <Outlet />
+    </main>
+  </div>
+);
 function App() {
   return (
     <BrowserRouter>
@@ -56,12 +65,12 @@ function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/applications" element={<ApplicationApproval />} />
-          
+
           {/* Redirect /admin to /dashboard */}
           <Route path="/admin" element={<Navigate to="/dashboard" />} />
 
         </Route>
-        
+
         {/* Staff Protected Routes with Sidebar - reuse Admin UI */}
         <Route
           element={
@@ -88,7 +97,7 @@ function App() {
           }
         />
 
-        
+
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/login" />} />

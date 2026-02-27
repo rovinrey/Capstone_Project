@@ -1,6 +1,6 @@
 import { useState } from "react";
+
 import { Link, useNavigate } from "react-router-dom";
-import WelcomeBanner from '../components/Welcomebanner';
 import Form from "../components/forms/form";
 import axios from 'axios';
 
@@ -21,7 +21,7 @@ function Login() {
     setError(null);
 
     try {
-        const response = await axios.post('http://localhost:5000/login', {
+        const response = await axios.post('http://localhost:5000/api/auth/login', {  
             // Use 'identifier' to match the backend req.body
             identifier: credentials.username, 
             password: credentials.password
