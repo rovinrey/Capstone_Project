@@ -1,15 +1,27 @@
 const beneficiaryService = require('../services/beneficiary.services');
 const dilpService = require('../services/dilp.services');
+const spesService = require('../services/spes.services');
 
-exports.applyToProgram = async (req, res) => {
+exports.applyToTupad = async (req, res) => {
     try {
         // MUST match the name in your service file
         const [result] = await beneficiaryService.applyTupad(req.body); 
         
-        res.status(201).json({ message: "Success!", id: result.insertId });
+        res.status(201).json({ message: "TUPAD Application Success!", id: result.insertId });
     } catch (error) {
         console.error("SQL Error Details:", error); // Check your terminal for the REAL error
         res.status(500).json({ message: "DB Error", error: error.sqlMessage });
+    }
+};
+
+// Apply to SPES program
+exports.applyToSpes = async (req, res) => {
+    try {
+        const [result] = await spesService.applySpes(req.body);
+        res.status(201).json({ message: "SPES Application Success!", id: result.insertId });
+    } catch (error) {
+        console.error("SPES Application Error:", error.message);
+        res.status(500).json({ message: "Error submitting SPES application", error: error.message });
     }
 };
 

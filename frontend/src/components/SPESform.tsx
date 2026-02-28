@@ -1,93 +1,178 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import axios from "axios";
+import Form from './form';
 
-function SpesForm() {
-    const [formData, setFormData] = useState({
-        first_name: '',
-        middle_name: '',
-        last_name: '',
-        birthday: '',
-        gender: '',
-        civil_status: 'Single',
-        contact_number: '',
-        email: '',
-        address: '',
-        school_name: '',
-        course_degree: '',
-        is_indigent: false,
-    });
+interface FormData {
+    first_name: string;
+    middle_name: string;
+    last_name: string;
+    gender: string;
+    age: string;
+    birthday: string;
+    contact_number: string;
+    school_name: string;
+    course_year: string;
+    gwa: string;
+}
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        const finalValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        setFormData({ ...formData, [name]: finalValue });
+const initialState: FormData = {
+    first_name: "",
+    middle_name: "",
+    last_name: "",
+    gender: "",
+    age: "",
+    birthday: "",
+    contact_number: "",
+    school_name: "",
+    course_year: "",
+    gwa: "",
+};
+
+const SPESApplication: React.FC = () => {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
+    const [formData, setFormData] = useState<FormData>(initialState);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+
+        setFormData({
+            ...formData,
+            [name]: value,
+        });
+
+        // Auto calculate age if birthday changes
+        if (name === "birthday") {
+            const birthDate = new Date(value);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+
+            if (
+                monthDiff < 0 ||
+                (monthDiff === 0 && today.getDate() < birthDate.getDate())
+            ) {
+                age--;
+            }
+
+            setFormData((prev) => ({
+                ...prev,
+                birthday: value,
+                age: age.toString(),
+            }));
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            await axios.post("http://localhost:5000/api/forms/apply/spes", formData);
+
+            setSuccess(true);
+            setFormData(initialState);
+        } catch (err) {
+            setError("Something went wrong. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8 px-4">
-            <div className="max-w-3xl mx-auto bg-white shadow-md rounded-lg p-8">
-                <div className="border-b pb-4 mb-6">
-                    <h2 className="text-2xl font-bold text-blue-800">SPES Application Form</h2>
-                    <p className="text-gray-600">Special Program for Employment of Students</p>
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 py-10">
+            <div className="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8">
+                <div className="mb-8 text-center">
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        SPES Application Form
+                    </h1>
+                    <p className="text-gray-500 text-sm">
+                        Please provide accurate information for evaluation.
+                    </p>
                 </div>
 
-                <form className="space-y-6">
-                    {/* Section: Personal Info */}
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-700 mb-4 border-l-4 border-blue-500 pl-2">Personal Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input type="text" name="first_name" placeholder="First Name" onChange={handleChange} 
-                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                            <input type="text" name="middle_name" placeholder="Middle Name" onChange={handleChange}
-                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-                            <input type="text" name="last_name" placeholder="Last Name" onChange={handleChange}
-                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
+                {error && (
+                    <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">
+                        {error}
+                    </div>
+                )}
+
+                {success && (
+                    <div className="bg-green-100 text-green-600 p-3 rounded mb-4 text-sm">
+                        Application sent successfully!
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Form name="first_name" placeholder="First Name" value={formData.first_name} onChange={handleChange} />
+                        <Form name="middle_name" placeholder="Middle Name" value={formData.middle_name} onChange={handleChange} />
+                        <Form name="last_name" placeholder="Last Name" value={formData.last_name} onChange={handleChange} />
                     </div>
 
-                    {/* Section: Contact & Bio */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600">Birthday</label>
-                            <input type="date" name="birthday" onChange={handleChange} 
-                                className="w-full p-2 border border-gray-300 rounded mt-1" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600">Gender</label>
-                            <select name="gender" onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1">
-                                <option value="">Select Gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
+                        <Form name="gender" placeholder="Gender" value={formData.gender} onChange={handleChange} />
+
+                        <Form name="age" placeholder="Age (Auto-calculated)" value={formData.age} onChange={handleChange} />
+
+                        <Form
+                            name="birthday"
+                            type="date"
+                            value={formData.birthday}
+                            onChange={handleChange}
+                        />
+
+                        <Form
+                            name="contact_number"
+                            placeholder="Contact Number (09...)"
+                            value={formData.contact_number}
+                            onChange={handleChange}
+                        />
+                    </div>
+
+                    <div className="border-t pt-4 mt-4">
+                        <h2 className="text-sm font-bold text-blue-600 mb-3 uppercase">
+                            Academic Information
+                        </h2>
+
+                        <Form
+                            name="school_name"
+                            placeholder="Full School Name"
+                            value={formData.school_name}
+                            onChange={handleChange}
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <Form
+                                name="course_year"
+                                placeholder="Course & Year (e.g. BSIT 3)"
+                                value={formData.course_year}
+                                onChange={handleChange}
+                            />
+                            <Form
+                                name="gwa"
+                                type="number"
+                                step="0.01"
+                                placeholder="Current GWA"
+                                value={formData.gwa}
+                                onChange={handleChange}
+                            />
                         </div>
                     </div>
 
-                    {/* Section: Education */}
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-700 mb-4 border-l-4 border-blue-500 pl-2">Education</h3>
-                        <div className="space-y-4">
-                            <input type="text" name="school_name" placeholder="Name of School" onChange={handleChange}
-                                className="w-full p-2 border border-gray-300 rounded" />
-                            <input type="text" name="course_degree" placeholder="Course / Year Level" onChange={handleChange}
-                                className="w-full p-2 border border-gray-300 rounded" />
-                        </div>
-                    </div>
-
-                    {/* Checkbox */}
-                    <div className="flex items-center space-x-2 bg-blue-50 p-4 rounded">
-                        <input type="checkbox" name="is_indigent" id="indigent" onChange={handleChange} 
-                            className="h-5 w-5 text-blue-600" />
-                        <label htmlFor="indigent" className="text-sm text-blue-800 font-medium">
-                            The applicant belongs to an indigent family (No Income)
-                        </label>
-                    </div>
-
-                    <button type="submit" className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg transition duration-300 shadow-lg">
-                        Submit Application
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all shadow-md active:scale-95 disabled:bg-blue-300"
+                    >
+                        {loading ? "Submitting..." : "Submit SPES Application"}
                     </button>
                 </form>
             </div>
         </div>
     );
-}
+};
 
-export default SpesForm;
+export default SPESApplication;
