@@ -9,6 +9,9 @@ const formController = require('../controllers/form.controller');
 // You only put /apply/tupad here:
 router.post('/apply/tupad', formController.applyToTupad);
 
+// SPES route
+router.post('/apply/spes', formController.applyToSpes);
+
 // DILP routes
 router.post('/apply/dilp', formController.applyToDilp);
 router.get('/dilp/recent', formController.getRecentDilpApplications);

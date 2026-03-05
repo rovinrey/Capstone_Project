@@ -1,29 +1,54 @@
-import  { useState } from "react";
+import { useState } from "react";
 import { Briefcase, MapPin, Star, GraduationCap, Send } from "lucide-react";
 
 function JobSeekerForm() {
   const [formData, setFormData] = useState({
-    // Basic Profiling
+    // Personal Info
     fullName: "",
     age: "",
     gender: "",
+    civilStatus: "",
+    birthdate: "",
     barangay: "",
+    city: "",
+    province: "",
     contactNumber: "",
-    // Employment Status
-    status: "Unemployed", // or Underemployed/Displaced Worker
-    // Skills Profiling (Objective 1)
-    technicalSkills: [] as string[],
-    yearsOfExperience: "",
+    email: "",
+
+    // Employment Info
+    status: "Unemployed",
+    preferredWorkType: "Full-time",
     preferredIndustry: "",
-    // Training Needs
-    urgentTraining: ""
+    yearsOfExperience: "",
+
+    // Skills
+    technicalSkills: [] as string[],
+
+    // Training
+    urgentTraining: "",
+    certifications: "",
+
+    // Additional
+    availability: "",
+    expectedSalary: ""
   });
+
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const commonSkills = [
     "Construction/Masonry", "Electrical/Wiring", "Welding (NCII)",
     "Housekeeping", "Culinary/Cooking", "Driving (Professional)",
     "Customer Service", "Virtual Assistant", "Bookkeeping"
   ];
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSkillClick = (skill: string) => {
     setFormData(prev => ({
@@ -34,100 +59,142 @@ function JobSeekerForm() {
     }));
   };
 
-  return (
-    <div className="max-w-3xl mx-auto my-10 bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-8 text-white">
-        <h2 className="text-3xl font-extrabold flex items-center gap-3">
-          <Briefcase size={32} /> Job Seeker Profile
-        </h2>
-        <p className="mt-2 text-emerald-50">Provide your details to match with available employment and training programs.</p>
-      </div>
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
 
-      <form className="p-8 space-y-8">
-        {/* Section 1: Personal Details */}
+    try {
+      if (!formData.fullName.trim()) throw new Error("Full name is required");
+      if (!formData.contactNumber.trim()) throw new Error("Contact number is required");
+
+      console.log("Submitted Job Seeker Data:", formData);
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 5000);
+
+    } catch (err: any) {
+      setError(err.message || "Submission failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputStyle =
+    "w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none";
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-10 px-4">
+      <div className="max-w-5xl mx-auto bg-white border-t-8 border-green-600 shadow-xl rounded-lg p-8 space-y-8">
+
+        <div>
+          <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-3">
+            <Briefcase size={28} /> Job Seeker Profile
+          </h2>
+          <p className="text-green-700 font-medium italic">
+            Employment & Training Profiling System
+          </p>
+        </div>
+
+        {success && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+            ✓ Profile submitted successfully!
+          </div>
+        )}
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            ✗ {error}
+          </div>
+        )}
+
+        {/* Personal Information */}
         <section>
-          <div className="flex items-center gap-2 mb-4 text-emerald-700 font-bold text-lg">
-            <MapPin size={20} /> <h4>1. Personal Information</h4>
+          <div className="flex items-center gap-2 mb-4 text-green-700 font-bold text-lg">
+            <MapPin size={20} /> Personal Information
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Full Name</label>
-              <input type="text" className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Last Name, First Name, M.I." />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Barangay</label>
-              <select className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
-                <option>Select Barangay</option>
-                <option>San Jose</option>
-                <option>Poblacion</option>
-                <option>Concepcion</option>
-              </select>
-            </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <input name="fullName" placeholder="Full Name" value={formData.fullName} onChange={handleChange} className={inputStyle}/>
+            <input type="number" name="age" placeholder="Age" value={formData.age} onChange={handleChange} className={inputStyle}/>
+            <select name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
+              <option value="">Gender</option>
+              <option>Male</option>
+              <option>Female</option>
+            </select>
           </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mt-6">
+            <input name="civilStatus" placeholder="Civil Status" value={formData.civilStatus} onChange={handleChange} className={inputStyle}/>
+            <input type="date" name="birthdate" value={formData.birthdate} onChange={handleChange} className={inputStyle}/>
+            <input name="contactNumber" placeholder="Contact Number" value={formData.contactNumber} onChange={handleChange} className={inputStyle}/>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mt-6">
+            <input name="barangay" placeholder="Barangay" value={formData.barangay} onChange={handleChange} className={inputStyle}/>
+            <input name="city" placeholder="City" value={formData.city} onChange={handleChange} className={inputStyle}/>
+            <input name="province" placeholder="Province" value={formData.province} onChange={handleChange} className={inputStyle}/>
+          </div>
+
+          <input name="email" placeholder="Email Address" value={formData.email} onChange={handleChange} className={`${inputStyle} mt-6`}/>
         </section>
 
-        {/* Section 2: Skills & Work Profiling (Objective: Profiling) */}
-        <section className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
-          <div className="flex items-center gap-2 mb-4 text-emerald-700 font-bold text-lg">
-            <Star size={20} /> <h4>2. Skills & Vocational Profile</h4>
+        {/* Skills Section */}
+        <section className="bg-green-50 p-6 rounded-lg border border-green-100">
+          <div className="flex items-center gap-2 mb-4 text-green-700 font-bold text-lg">
+            <Star size={20} /> Skills & Experience
           </div>
 
-          <label className="block text-sm font-medium text-gray-700 mb-3">Select your Technical Skills (You can select multiple)</label>
           <div className="flex flex-wrap gap-2 mb-6">
             {commonSkills.map(skill => (
               <button
                 key={skill}
                 type="button"
                 onClick={() => handleSkillClick(skill)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.technicalSkills.includes(skill)
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
-                    : "bg-white text-gray-600 border border-gray-200 hover:border-emerald-300"
-                  }`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  formData.technicalSkills.includes(skill)
+                    ? "bg-green-600 text-white"
+                    : "bg-white border border-gray-300 text-gray-600"
+                }`}
               >
                 {skill}
               </button>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Years of Experience</label>
-              <input type="number" className="p-3 border border-gray-200 rounded-xl" placeholder="e.g. 2" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Preferred Work Type</label>
-              <select className="p-3 border border-gray-200 rounded-xl">
-                <option>Full-time</option>
-                <option>Part-time</option>
-                <option>Project-based</option>
-              </select>
-            </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <input type="number" name="yearsOfExperience" placeholder="Years of Experience" value={formData.yearsOfExperience} onChange={handleChange} className={inputStyle}/>
+            <select name="preferredWorkType" value={formData.preferredWorkType} onChange={handleChange} className={inputStyle}>
+              <option>Full-time</option>
+              <option>Part-time</option>
+              <option>Project-based</option>
+            </select>
           </div>
         </section>
 
-        {/* Section 3: Training Needs (Objective: Training needs development) */}
+        {/* Training Section */}
         <section>
-          <div className="flex items-center gap-2 mb-4 text-emerald-700 font-bold text-lg">
-            <GraduationCap size={20} /> <h4>3. Training Needs</h4>
+          <div className="flex items-center gap-2 mb-4 text-green-700 font-bold text-lg">
+            <GraduationCap size={20} /> Training Needs
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">What specific training or certification do you need to get hired?</label>
-            <textarea
-              className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 h-24"
-              placeholder="e.g. I need TESDA NCII certification for Plumbing to qualify for local jobs."
-            ></textarea>
-          </div>
+
+          <textarea name="urgentTraining" placeholder="What training or certification do you need?" value={formData.urgentTraining} onChange={handleChange} className={inputStyle}/>
+          <textarea name="certifications" placeholder="Existing Certifications (if any)" value={formData.certifications} onChange={handleChange} className={`${inputStyle} mt-6`}/>
         </section>
 
         <button
-          type="submit"
-          className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-2"
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading}
+          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-black py-4 rounded-lg uppercase shadow-lg flex items-center justify-center gap-2"
         >
-          <Send size={20} /> Submit Profile
+          <Send size={18} />
+          {loading ? "Submitting..." : "Submit Job Profile"}
         </button>
-      </form>
+
+      </div>
     </div>
   );
-};
+}
+
 export default JobSeekerForm;

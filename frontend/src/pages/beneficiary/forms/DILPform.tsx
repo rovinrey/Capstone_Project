@@ -3,26 +3,60 @@ import { dilpAPI } from "../../../api/dilp.api";
 
 interface FormData {
     proponent_name: string;
+    sex: string;
+    civil_status: string;
+    birthdate: string;
+    email: string;
+
     project_title: string;
     project_type: string;
     category: string;
     proposed_amount: string;
+
     location: string;
+    barangay: string;
+    city: string;
+    province: string;
+
     contact_person: string;
     mobile_number: string;
+
+    business_experience: string;
+    estimated_monthly_income: string;
+    number_of_beneficiaries: string;
+    skills_training: string;
+
+    valid_id_number: string;
     brief_description: string;
 }
 
 function DilpForm() {
     const [formData, setFormData] = useState<FormData>({
         proponent_name: '',
+        sex: '',
+        civil_status: '',
+        birthdate: '',
+        email: '',
+
         project_title: '',
         project_type: 'Individual',
         category: 'Formation',
         proposed_amount: '',
+
         location: '',
+        barangay: '',
+        city: '',
+        province: '',
+
         contact_person: '',
         mobile_number: '',
+
+        business_experience: '',
+        estimated_monthly_income: '',
+        number_of_beneficiaries: '',
+        skills_training: '',
+
+        valid_id_number: '',
         brief_description: '',
     });
 
@@ -30,229 +64,157 @@ function DilpForm() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         setLoading(true);
         setError(null);
         setSuccess(false);
 
         try {
-            // Validate required fields
-            if (!formData.proponent_name.trim()) {
-                setError("Proponent name is required");
-                setLoading(false);
-                return;
-            }
-            if (!formData.project_title.trim()) {
-                setError("Project title is required");
-                setLoading(false);
-                return;
-            }
-            if (!formData.proposed_amount) {
-                setError("Proposed amount is required");
-                setLoading(false);
-                return;
-            }
+            // Basic Validation
+            if (!formData.proponent_name.trim()) throw new Error("Proponent name is required");
+            if (!formData.project_title.trim()) throw new Error("Project title is required");
+            if (!formData.proposed_amount) throw new Error("Proposed amount is required");
+            if (!formData.mobile_number.trim()) throw new Error("Mobile number is required");
 
-            // Submit to backend
             const response = await dilpAPI.submitDilpApplication({
-                proponent_name: formData.proponent_name,
-                project_title: formData.project_title,
-                project_type: formData.project_type,
-                category: formData.category,
+                ...formData,
                 proposed_amount: parseFloat(formData.proposed_amount),
-                location: formData.location,
-                contact_person: formData.contact_person,
-                mobile_number: formData.mobile_number,
-                brief_description: formData.brief_description,
+                estimated_monthly_income: parseFloat(formData.estimated_monthly_income || "0"),
+                number_of_beneficiaries: parseInt(formData.number_of_beneficiaries || "0"),
             });
 
+            console.log("Submitted:", response);
             setSuccess(true);
-            console.log("DILP Application submitted successfully:", response);
 
-            // Reset form
             setFormData({
                 proponent_name: '',
+                sex: '',
+                civil_status: '',
+                birthdate: '',
+                email: '',
                 project_title: '',
                 project_type: 'Individual',
                 category: 'Formation',
                 proposed_amount: '',
                 location: '',
+                barangay: '',
+                city: '',
+                province: '',
                 contact_person: '',
                 mobile_number: '',
+                business_experience: '',
+                estimated_monthly_income: '',
+                number_of_beneficiaries: '',
+                skills_training: '',
+                valid_id_number: '',
                 brief_description: '',
             });
 
-            // Show success message for 5 seconds
             setTimeout(() => setSuccess(false), 5000);
+
         } catch (err: any) {
-            console.error("Error submitting DILP proposal:", err);
-            setError(err.response?.data?.message || err.message || "Failed to submit application. Please try again.");
+            setError(err.message || "Submission failed");
         } finally {
             setLoading(false);
         }
     };
 
+    const inputStyle =
+        "w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none";
+
     return (
         <div className="min-h-screen bg-slate-50 py-10 px-4">
-            <div className="max-w-4xl mx-auto bg-white border-t-8 border-green-600 shadow-xl rounded-lg p-8">
-                <div className="mb-8">
-                    <h2 className="text-3xl font-extrabold text-gray-800">DILP Application Form</h2>
-                    <p className="text-green-700 font-medium italic">DOLE Integrated Livelihood Program (Kabuhayan)</p>
+            <div className="max-w-5xl mx-auto bg-white border-t-8 border-green-600 shadow-xl rounded-lg p-8 space-y-6">
+
+                <h2 className="text-3xl font-extrabold text-gray-800">
+                    DILP Application Form
+                </h2>
+
+                {success && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+                        ✓ Application submitted successfully!
+                    </div>
+                )}
+
+                {error && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                        ✗ {error}
+                    </div>
+                )}
+
+                {/* Personal Info */}
+                <div className="grid md:grid-cols-3 gap-6">
+                    <input name="proponent_name" placeholder="Proponent Name" value={formData.proponent_name} onChange={handleChange} className={inputStyle}/>
+                    <input name="sex" placeholder="Sex" value={formData.sex} onChange={handleChange} className={inputStyle}/>
+                    <input name="civil_status" placeholder="Civil Status" value={formData.civil_status} onChange={handleChange} className={inputStyle}/>
                 </div>
 
-                {/* Success Message */}
-                {success && (
-                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-green-700 font-medium">✓ Your DILP application has been submitted successfully!</p>
-                    </div>
-                )}
+                <div className="grid md:grid-cols-2 gap-6">
+                    <input type="date" name="birthdate" value={formData.birthdate} onChange={handleChange} className={inputStyle}/>
+                    <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} className={inputStyle}/>
+                </div>
 
-                {/* Error Message */}
-                {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-red-700 font-medium">✗ {error}</p>
-                    </div>
-                )}
+                {/* Project Info */}
+                <div className="grid md:grid-cols-2 gap-6">
+                    <input name="project_title" placeholder="Project Title" value={formData.project_title} onChange={handleChange} className={inputStyle}/>
+                    <input type="number" name="proposed_amount" placeholder="Proposed Amount" value={formData.proposed_amount} onChange={handleChange} className={inputStyle}/>
+                </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Project Identification */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Project Title</label>
-                            <input 
-                                type="text" 
-                                name="project_title" 
-                                value={formData.project_title}
-                                placeholder="e.g., Rice Retailing or Sari-Sari Store" 
-                                onChange={handleChange}
-                                className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" 
-                                required 
-                            />
-                        </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                    <select name="project_type" value={formData.project_type} onChange={handleChange} className={inputStyle}>
+                        <option value="Individual">Individual</option>
+                        <option value="Group">Group</option>
+                    </select>
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Proponent Name</label>
-                            <input 
-                                type="text" 
-                                name="proponent_name" 
-                                value={formData.proponent_name}
-                                placeholder="Individual Name or Group Name" 
-                                onChange={handleChange}
-                                className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" 
-                                required 
-                            />
-                        </div>
+                    <select name="category" value={formData.category} onChange={handleChange} className={inputStyle}>
+                        <option value="Formation">Formation</option>
+                        <option value="Enhancement">Enhancement</option>
+                        <option value="Restoration">Restoration</option>
+                    </select>
+                </div>
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Project Type</label>
-                            <select 
-                                name="project_type" 
-                                value={formData.project_type}
-                                onChange={handleChange} 
-                                className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                            >
-                                <option value="Individual">Individual</option>
-                                <option value="Group">Group</option>
-                            </select>
-                        </div>
-                    </div>
+                {/* Address */}
+                <div className="grid md:grid-cols-4 gap-6">
+                    <input name="location" placeholder="Street Address" value={formData.location} onChange={handleChange} className={inputStyle}/>
+                    <input name="barangay" placeholder="Barangay" value={formData.barangay} onChange={handleChange} className={inputStyle}/>
+                    <input name="city" placeholder="City" value={formData.city} onChange={handleChange} className={inputStyle}/>
+                    <input name="province" placeholder="Province" value={formData.province} onChange={handleChange} className={inputStyle}/>
+                </div>
 
-                    {/* Financials & Category */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Category</label>
-                            <select 
-                                name="category" 
-                                value={formData.category}
-                                onChange={handleChange} 
-                                className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                            >
-                                <option value="Formation">Kabuhayan Formation</option>
-                                <option value="Enhancement">Kabuhayan Enhancement</option>
-                                <option value="Restoration">Kabuhayan Restoration</option>
-                            </select>
-                        </div>
+                {/* Contact */}
+                <div className="grid md:grid-cols-2 gap-6">
+                    <input name="contact_person" placeholder="Contact Person" value={formData.contact_person} onChange={handleChange} className={inputStyle}/>
+                    <input name="mobile_number" placeholder="Mobile Number" value={formData.mobile_number} onChange={handleChange} className={inputStyle}/>
+                </div>
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Proposed Grant Amount (₱)</label>
-                            <input 
-                                type="number" 
-                                name="proposed_amount" 
-                                value={formData.proposed_amount}
-                                placeholder="0.00" 
-                                onChange={handleChange}
-                                className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" 
-                                required 
-                            />
-                        </div>
-                    </div>
+                {/* Business Info */}
+                <textarea name="business_experience" placeholder="Business Experience" value={formData.business_experience} onChange={handleChange} className={inputStyle}/>
+                <textarea name="skills_training" placeholder="Skills / Trainings" value={formData.skills_training} onChange={handleChange} className={inputStyle}/>
 
-                    {/* Location and Contact Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Location/Address</label>
-                            <input 
-                                type="text" 
-                                name="location" 
-                                value={formData.location}
-                                placeholder="Project location" 
-                                onChange={handleChange}
-                                className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" 
-                            />
-                        </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                    <input type="number" name="estimated_monthly_income" placeholder="Estimated Monthly Income" value={formData.estimated_monthly_income} onChange={handleChange} className={inputStyle}/>
+                    <input type="number" name="number_of_beneficiaries" placeholder="Number of Beneficiaries" value={formData.number_of_beneficiaries} onChange={handleChange} className={inputStyle}/>
+                </div>
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Contact Person</label>
-                            <input 
-                                type="text" 
-                                name="contact_person" 
-                                value={formData.contact_person}
-                                placeholder="Full name" 
-                                onChange={handleChange}
-                                className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" 
-                            />
-                        </div>
-                    </div>
+                <input name="valid_id_number" placeholder="Valid ID Number" value={formData.valid_id_number} onChange={handleChange} className={inputStyle}/>
+                <textarea name="brief_description" placeholder="Project Description" value={formData.brief_description} onChange={handleChange} className={inputStyle}/>
 
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Mobile Number</label>
-                        <input 
-                            type="tel" 
-                            name="mobile_number" 
-                            value={formData.mobile_number}
-                            placeholder="09XX-XXX-XXXX" 
-                            onChange={handleChange}
-                            className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" 
-                        />
-                    </div>
+                <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-black py-4 rounded-lg uppercase"
+                >
+                    {loading ? "Submitting..." : "Submit DILP Proposal"}
+                </button>
 
-                    {/* Description */}
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Project Brief Description</label>
-                        <textarea 
-                            name="brief_description" 
-                            value={formData.brief_description}
-                            rows={4} 
-                            onChange={handleChange} 
-                            placeholder="Briefly explain how this livelihood project will help you..."
-                            className="w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                        />
-                    </div>
-
-                    <button 
-                        type="submit" 
-                        disabled={loading}
-                        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-black py-4 rounded-lg transition-all transform hover:scale-[1.01] shadow-lg uppercase"
-                    >
-                        {loading ? 'Submitting...' : 'Submit DILP Proposal'}
-                    </button>
-                </form>
             </div>
         </div>
     );

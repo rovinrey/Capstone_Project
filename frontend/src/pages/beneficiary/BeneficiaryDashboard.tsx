@@ -4,10 +4,10 @@ import WelcomeBanner from "../../components/Welcomebanner";
 import { ClipboardList, LayoutGrid, Clock } from "lucide-react"; 
 import axios from "axios";
 
-import TupadForm from "../../components/forms/TUPADform";
-import SpesForm from '../../components/forms/SpesApplicationForm';
-import DilpForm from "../../components/forms/DILPform";
-import GIPform from "../../components/forms/GIPform";
+import TupadForm from "./forms/TUPADform";
+import SpesForm from './forms/SpesApplicationForm';
+import DilpForm from "./forms/DILPform";
+import GIPform from "./forms/GIPform";
 import JobSeekerForm from "./forms/JobseekersForm";
 
 function BeneficiaryDashboard() {
@@ -20,7 +20,7 @@ function BeneficiaryDashboard() {
         // get user profile on component mount
         const fetchUserProfile = async () => {
             try {
-                const response = await axios.get('http://localhost:5000/api/auth/getProfile', { withCredentials: true });
+                const response = await axios.get('http://localhost:5000/api/auth/getProfile');
                 setUser(response.data);
             } catch (error) {
                 console.error("Error fetching user profile:", error);

@@ -1,22 +1,25 @@
 const db = require('../config/db');
 
 // apply for SPES
-exports.applySpes = async (data) => {
+exports.applyToSpes = async (data) => {
     try {
-        // Step 1: Format birthday
-        const formattedBirthday = data.birthday ? new Date(data.birthday).toISOString().split('T')[0] : null;
+        // 1. Format date (handling date_of_birth from frontend)
+        const formattedBirthday = data.date_of_birth 
+            ? new Date(data.date_of_birth).toISOString().split('T')[0] 
+            : null;
 
-        // Step 2: Insert into applications table
-        const applicationQuery = `
-            INSERT INTO applications (
-                first_name, middle_name, last_name, birthday, age, 
-                gender, civil_status, contact_number, occupation, 
-                monthly_income, valid_id_type, id_number, 
-                name_of_beneficiary, program_type
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        // 3. Single Insert into spes_applications
+        const query = `
+            INSERT INTO spes_applications (
+                first_name, middle_name, last_name, date_of_birth, age, 
+                gender, civil_status, address, contact_number, email,
+                school, course, year_level, gwa,
+                parent_name, parent_occupation, monthly_income, 
+               program_type, applied_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
 
-        const applicationValues = [
+        const values = [
             data.first_name || '',
             data.middle_name || null,
             data.last_name || '',
@@ -24,46 +27,96 @@ exports.applySpes = async (data) => {
             data.age || null,
             data.gender || null,
             data.civil_status || null,
+            data.address || null,
             data.contact_number || null,
-            data.occupation || null,
-            data.monthly_income || 0,
-            data.valid_id_type || null,
-            data.id_number || null,
-            data.name_of_beneficiary || null,
-            'SPES'  // Program type is always SPES
+            data.email || null,
+            data.school || null,       // Mapped from school
+            data.course || null,       // Mapped from course
+            data.year_level || null,    // Mapped from yearLevel
+            data.gwa || null,          // Mapped from gpa
+            data.parent_name || null,
+            data.parent_occupation || null,
+            data.family_income || 0,   // Mapped from family_income         // Mapped from applied_at     
+            'SPES'
         ];
 
-        const [applicationResult] = await db.execute(applicationQuery, applicationValues);
-        const applicationId = applicationResult.insertId;
-
-        // Step 3: Get program_id from programs table
-        const [programRows] = await db.execute(
-            'SELECT id FROM programs WHERE program_name = ?',
-            ['SPES']
-        );
-
-        const programId = programRows.length > 0 ? programRows[0].id : null;
-
-        // Step 4: Insert SPES-specific details into spes_applications
-        const spesQuery = `
-            INSERT INTO spes_applications (
-                application_id, program_id, school_name, course_year, gwa
-            ) VALUES (?, ?, ?, ?, ?)
-        `;
-
-        const spesValues = [
-            applicationId,
-            programId,
-            data.school_name || null,
-            data.course_year || null,
-            data.gwa || null
-        ];
-
-        const [spesResult] = await db.execute(spesQuery, spesValues);
-
-        return [{ insertId: applicationId }];
+        const [result] = await db.execute(query, values);
+        
+        return { success: true, insertId: result.insertId };
     } catch (error) {
         console.error("SPES Application Error:", error.message);
         throw error;
     }
+};
+
+// Apply to SPES program
+exports.approveApplication = async (id) => {
+    const connection = await db.getConnection(); 
+    
+    try {
+        await connection.beginTransaction();
+
+        // 1. Fetch the full applicant data
+        const [rows] = await connection.execute(
+            'SELECT * FROM spes_applications WHERE id = ?', 
+            [id]
+        );
+
+        if (rows.length === 0) {
+            throw new Error('Application not found');
+        }
+
+        const app = rows[0];
+
+        // 2. Insert into beneficiaries table
+        // Defined 11 columns here:
+        const insertQuery = `
+            INSERT INTO beneficiaries (
+                first_name, middle_name, last_name, extension_name,
+                gender, civil_status, address, contact_number, 
+                program_type, approval_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        `;  
+
+        // You must provide exactly 10 values (the 11th is NOW())
+        const insertValues = [
+            app.first_name || null,
+            app.middle_name || null,    
+            app.last_name || null,
+            app.extension_name || null,
+            app.gender || null,
+            app.civil_status || null,
+            app.address || null, // Check: was app.address in your original app object?
+            app.contact_number || null,
+            app.program_type || null
+        ];
+
+        await connection.execute(insertQuery, insertValues);
+
+        // 3. Update application status
+        const updateQuery = `
+            UPDATE spes_applications
+            SET application_status = 'Approved', updated_at = NOW()
+            WHERE id = ?
+        `;
+        await connection.execute(updateQuery, [id]);
+
+        await connection.commit();
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error("Database Error Detail:", error.message);
+        throw error;
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+// Reject application by ID with optional reason
+exports.rejectApplication = async (id, reason) => {
+    const query = `
+        UPDATE spes_applications
+        SET application_status = 'Rejected', rejection_reason = ?, updated_at = NOW()
+        WHERE id = ?
+    `;
+    return await db.execute(query, [reason, id]);
 };

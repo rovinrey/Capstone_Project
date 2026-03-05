@@ -12,7 +12,7 @@ app.use(cors());
 
 app.use(express.json()); // express.json() is the standard way to get json middleware
 
-app.use('/api/auth', authRoutes); // This will handle both /signup and /login routes));
+app.use('/api/auth', authRoutes); // This will handle both /signup and /login routes
 
 
 // --- LOGOUT ROUTE ---

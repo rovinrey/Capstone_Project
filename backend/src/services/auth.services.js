@@ -101,11 +101,11 @@ const login = async (body) => {
 };
 
 // get the usetname of the user who logged in
-const getProfile = async (userId) => {
+const getProfile = async (user_name) => {
     try {
-        const [users] = await db.execute(
-            'SELECT user_id, user_name, email, phone, role FROM users WHERE user_id = ?',
-            [userId]
+        const users = await db.execute(
+            'SELECT  user_name,  FROM users WHERE user_name = ?',
+            [user_name]
         );
         if (users.length === 0) {
             throw new Error("User not found");
