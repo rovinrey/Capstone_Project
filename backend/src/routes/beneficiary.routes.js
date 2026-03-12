@@ -17,8 +17,8 @@ router.get('/', async (req, res) => {
 // return total number of beneficiaries for dashboard stats
 router.get('/count', async (req, res) => {
     try {
-        const [[{ count }]] = await db.query('SELECT COUNT(*) as count FROM beneficiaries');
-        res.json({ count });
+        const [rows] = await db.query('SELECT program_type, COUNT(*) as count FROM beneficiaries GROUP BY program_type');
+        res.json(rows);
     } catch (err) {
         console.error("❌ COUNT ERROR:", err.message);
         res.status(500).json({ message: err.message });

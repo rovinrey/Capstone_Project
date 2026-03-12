@@ -7,7 +7,7 @@ exports.getAllBeneficiaries = async (req, res) => {
         const [rows] = await beneficiaryService.getAllBeneficiaries();
         res.json(rows);
     } catch (err) {
-        console.error("❌ FETCH ERROR:", err.message);
+        console.error("FETCH ERROR:", err.message);
         res.status(500).json({ message: err.message });
     }
 };
@@ -18,7 +18,7 @@ exports.getCount = async (req, res) => {
         const count = await beneficiaryService.getApprovedCount();
         res.json({ count });
     } catch (err) {
-        console.error("❌ COUNT ERROR:", err.message);
+        console.error("COUNT ERROR:", err.message);
         res.status(500).json({ message: err.message });
     }
 };
@@ -42,7 +42,7 @@ exports.exportBeneficiaries = async (req, res) => {
         await workbook.xlsx.write(res);
         res.end();
     } catch (err) {
-        console.error('❌ EXPORT ERROR:', err.message);
+        console.error('EXPORT ERROR:', err.message);
         res.status(500).json({ message: 'Failed to create export file.' });
     }
 };

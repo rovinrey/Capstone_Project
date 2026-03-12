@@ -27,6 +27,7 @@ interface Program {
 
 const Programs = () => {
     const [programs, setPrograms] = useState<Program[]>([]);
+    const [beneficiaryCounts, setBeneficiaryCounts] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; programId: number | null }>({
@@ -45,12 +46,27 @@ const Programs = () => {
     // Fetch programs from backend on component mount
     useEffect(() => {
         fetchPrograms();
+        fetchBeneficiaryCounts();
     }, []);
 
+    // get all programs and display in the admin UI 
+        const fetchBeneficiaryCounts = async () => {
+            try {
+                const response = await axios.get('http://localhost:5000/api/beneficiaries/count');
+                // response.data is an array: [{ program_type: 'TUPAD', count: 1 }, ...]
+                const counts: Record<string, number> = {};
+                response.data.forEach((row: any) => {
+                    counts[row.program_type] = row.count;
+                });
+                setBeneficiaryCounts(counts);
+            } catch (error) {
+                console.error('Error fetching beneficiary counts:', error);
+            }
+        };
     const fetchPrograms = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('http://localhost:5000/api/programs');
+            const response = await axios.get('http://localhost:5000/api/programs/allPrograms');
             setPrograms(response.data.map((prog: any) => ({
                 id: prog.id,
                 program_name: prog.program_name,
@@ -173,7 +189,8 @@ const Programs = () => {
             ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {programs.map((prog) => {
-                    const progress = (prog.filled / prog.slots) * 100;
+                    const beneficiaryCount = beneficiaryCounts[prog.program_name] || 0;
+                    const progress = (beneficiaryCount / prog.slots) * 100;
                     const budgetProgress = (prog.used / prog.budget) * 100;
 
                     return (
@@ -211,7 +228,7 @@ const Programs = () => {
                                 <div>
                                     <div className="flex justify-between text-xs mb-2">
                                         <span className="text-gray-500 font-medium">Beneficiary Slots</span>
-                                        <span className="text-gray-900 font-bold">{prog.filled} / {prog.slots}</span>
+                                        <span className="text-gray-900 font-bold">{beneficiaryCount} / {prog.slots}</span>
                                     </div>
                                     <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                                         <div 

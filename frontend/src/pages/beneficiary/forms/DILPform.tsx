@@ -2,6 +2,22 @@ import { useState } from "react";
 import { dilpAPI } from "../../../api/dilp.api";
 
 interface FormData {
+
+    // project location
+    province: string;
+    municipality: string;
+    district: string;
+    barangay: string;
+    street: string;
+
+    // project details
+    project_type: string; // group or individual
+    
+
+
+
+
+
     proponent_name: string;
     sex: string;
     civil_status: string;
@@ -9,14 +25,12 @@ interface FormData {
     email: string;
 
     project_title: string;
-    project_type: string;
+   
     category: string;
     proposed_amount: string;
 
-    location: string;
-    barangay: string;
-    city: string;
-    province: string;
+    
+  
 
     contact_person: string;
     mobile_number: string;
@@ -43,7 +57,7 @@ function DilpForm() {
         category: 'Formation',
         proposed_amount: '',
 
-        location: '',
+      
         barangay: '',
         city: '',
         province: '',
@@ -103,7 +117,6 @@ function DilpForm() {
                 project_type: 'Individual',
                 category: 'Formation',
                 proposed_amount: '',
-                location: '',
                 barangay: '',
                 city: '',
                 province: '',
@@ -149,7 +162,15 @@ function DilpForm() {
                     </div>
                 )}
 
-                {/* Personal Info */}
+               
+                {/*PRoject location*/}
+                <h4>PROJECT LOCATION</h4>
+                <div className="grid md:grid-cols-3 gap-6">
+                      <input name="Province (Probinsya):" placeholder="Province (Probinsya)"></input>
+                </div>
+              
+
+                 {/* Personal Info */}
                 <div className="grid md:grid-cols-3 gap-6">
                     <input name="proponent_name" placeholder="Proponent Name" value={formData.proponent_name} onChange={handleChange} className={inputStyle}/>
                     <input name="sex" placeholder="Sex" value={formData.sex} onChange={handleChange} className={inputStyle}/>
@@ -182,7 +203,6 @@ function DilpForm() {
 
                 {/* Address */}
                 <div className="grid md:grid-cols-4 gap-6">
-                    <input name="location" placeholder="Street Address" value={formData.location} onChange={handleChange} className={inputStyle}/>
                     <input name="barangay" placeholder="Barangay" value={formData.barangay} onChange={handleChange} className={inputStyle}/>
                     <input name="city" placeholder="City" value={formData.city} onChange={handleChange} className={inputStyle}/>
                     <input name="province" placeholder="Province" value={formData.province} onChange={handleChange} className={inputStyle}/>

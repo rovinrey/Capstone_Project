@@ -32,8 +32,9 @@ const Reports = () => {
             </div>
 
             {/* Performance Overview Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <ReportCard title="Disbursement Rate" value="92.4%" trend="+4.2%" positive={true} description="of allocated 2026 budget" />
+                <ReportCard title="Active Programs" value="1" trend={undefined} positive={undefined} description="Number of active programs" />
                 <ReportCard title="Success Rate" value="88.1%" trend="+1.5%" positive={true} description="Beneficiaries completed programs" />
                 <ReportCard title="Avg. Payout Time" value="14 Days" trend="-2 Days" positive={true} description="from approval to release" />
             </div>

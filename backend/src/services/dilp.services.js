@@ -1,25 +1,39 @@
-const db = require('../config/db');
+const db = require("../config/db");
 
 // Apply to DILP program
 exports.applyDilp = async (data) => {
     const query = `
         INSERT INTO dilp_applications (
-            proponent_name, project_title, project_type, category,
-            proposed_amount, location, contact_person, mobile_number,
-            brief_description, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
+            proponent_name, sex, civil_status, date_of_birth,
+            email, project_title, project_type, category,
+            proposed_amount, location, barangay, city, province, contact_person, 
+            contact_number, business_expercience, estimated_monthly_income,
+            number_of_beneficiaries, skills_training, valid_id_number, brief_description
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
-        data.proponent_name || '',
-        data.project_title || '',
-        data.project_type || 'Individual',
-        data.category || 'Formation',
-        data.proposed_amount || 0,
-        data.location || '',
-        data.contact_person || '',
-        data.mobile_number || '',
-        data.brief_description || ''
+        data.proponent_name,
+        data.sex,
+        data.civil_status,
+        data.date_of_birth,
+        data.email,
+        data.project_title,
+        data.project_type,
+        data.category,
+        data.proposed_amount,
+        data.location,
+        data.barangay,
+        data.city,
+        data.province,
+        data.contact_person,
+        data.contact_number,
+        data.business_expercience,
+        data.estimated_monthly_income,
+        data.number_of_beneficiaries,
+        data.skills_training,
+        data.valid_id_number,
+        data.brief_description,
     ];
 
     try {
@@ -70,8 +84,8 @@ exports.updateDilpStatus = async (id, status) => {
         SET status = ?, approval_date = ?
         WHERE id = ?
     `;
-    const timestamp = status === 'Approved' ? new Date().toISOString() : null;
-    
+    const timestamp = status === "Approved" ? new Date().toISOString() : null;
+
     try {
         const result = await db.execute(query, [status, timestamp, id]);
         return result;
@@ -99,4 +113,4 @@ exports.getDilpApplicationsByStatus = async (status, limit = 10) => {
         throw new Error("Failed to fetch DILP applications by status.");
     }
 };
-``
+``;

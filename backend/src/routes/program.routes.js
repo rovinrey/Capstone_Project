@@ -6,7 +6,7 @@ const programController = require('../controllers/program.controller');
 router.post('/', programController.createProgram);
 
 // Get all programs
-router.get('/', programController.getAllPrograms);
+router.get('/allPrograms', programController.getAllPrograms);
 
 // Get a single program
 router.get('/:id', programController.getProgram);

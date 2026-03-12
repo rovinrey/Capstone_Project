@@ -13,7 +13,7 @@ interface Application {
     occupation: string;
     monthly_income: number;
     status: string;
-    created_at: string;
+    applied_at: string;
 }
 
 function AdminDashboard() {
@@ -34,8 +34,19 @@ function AdminDashboard() {
     useEffect(() => {
         fetchRecentApplications();
         fetchBeneficiaryCount();
+        fetchActivePrograms();
     }, []);
     
+    // fetch the active programs
+    const fetchActivePrograms = async () => {
+        try {
+            const res = await axios.get("http://localhost:5000/api/programs/allPrograms");
+            setStats(prev => ({ ...prev, active_programs: res.data.length }));
+        } catch (err) {
+            console.error("Error fetching active programs", err);
+        }
+    };
+
     const fetchRecentApplications = async () => {
         setLoading(true);
         setError(null);
@@ -80,7 +91,7 @@ function AdminDashboard() {
     const handleApprove = async (id: number) => {
         setProcessingId(id);
         try {
-            const res = await axios.put(`http://localhost:5000/api/forms/applications/${id}/approve`);
+            const res = await axios.put(`http://localhost:5000/api/forms/approved/application/tupad/${id}`);
             if (res.status === 200) {
                 setRecentApps(recentApps.filter(app => app.id !== id));
                 alert("Application approved successfully");
@@ -121,10 +132,10 @@ function AdminDashboard() {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <StatCard title="Total Beneficiaries" value={stats.total_beneficiaries.toLocaleString()} trend="0%" trendLabel="this week" />
-                <StatCard title="Active Programs" value={stats.active_programs.toString()} trend="Active" trendLabel="Programs" />
-                <StatCard title="Total Distributed" value={`₱${stats.total_distributed.toLocaleString()}`} trend="0%" trendLabel="vs last month" />
-                <StatCard title="Employment Rate" value={`${stats.employment_rate}%`} trend="0%" trendLabel="growth" />
+                <StatCard title="Total Beneficiaries" value={(stats.total_beneficiaries ?? 0).toLocaleString()} trend="0%" trendLabel="this week" />
+                <StatCard title="Active Programs" value={(stats.active_programs ?? 0).toString()} trend="Active" trendLabel="Programs" />
+                <StatCard title="Total Distributed" value={`₱${(stats.total_distributed ?? 0).toLocaleString()}`} trend="0%" trendLabel="vs last month" />
+                <StatCard title="Employment Rate" value={`${stats.employment_rate ?? 0}%`} trend="0%" trendLabel="growth" />
             </div>
 
             {/* Recent Applications Table */}
@@ -132,7 +143,7 @@ function AdminDashboard() {
                 <div className="p-6 border-b border_gray-100 flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-gray-800">Recent Applications</h2>
                     <button
-                        onClick={() => window.location.assign('/applications')}
+                        onClick={() => window.location.href = '/admin/navigation/applications'}
                         className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                     >
                         View All
@@ -166,8 +177,8 @@ function AdminDashboard() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {recentApps.map((app) => (
-                                    <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                                {recentApps.map((app, idx) => (
+                                    <tr key={app.id || idx} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-gray-900">
                                             {app.first_name} {app.middle_name ? app.middle_name + ' ' : ''}{app.last_name}
                                         </td>
@@ -183,7 +194,7 @@ function AdminDashboard() {
                                             {app.occupation || '-'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            {formatDate(app.created_at)}
+                                            {formatDate(app.applied_at)}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(app.status)}`}>
@@ -191,7 +202,7 @@ function AdminDashboard() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            {app.status === 'Pending' ? (
+                                            {app.status === 'Pending' && app.id ? (
                                                 <div className="flex justify-center gap-2">
                                                     <button
                                                         onClick={() => handleApprove(app.id)}

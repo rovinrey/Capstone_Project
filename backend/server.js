@@ -5,6 +5,7 @@ const formRoutes = require('./src/routes/form.routes.js');
 const programRoutes = require('./src/routes/program.routes.js');
 const authRoutes = require('./src/routes/auth.routes.js');
 const beneficiaryRoutes = require('./src/routes/beneficiary.routes.js');
+const applicationsRoutes = require('./src/routes/applications.routes.js');
 
 // --- MIDDLEWARE ---
 const app = express();
@@ -26,6 +27,7 @@ app.use('/api/forms', formRoutes);
 app.use('/api/programs', programRoutes);
 // expose beneficiaries endpoint so frontend can fetch approved applicants
 app.use('/api/beneficiaries', beneficiaryRoutes);
+app.use('/api/applications', applicationsRoutes);
 
 const PORT = 5000;
 app.listen(PORT, () => {

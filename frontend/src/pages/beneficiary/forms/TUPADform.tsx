@@ -6,7 +6,7 @@ function TupadForm() {
         first_name: "",
         middle_name: "",
         last_name: "",
-        birthday: "",
+        date_of_birth: "",
         valid_id_type: "",
         id_number: "",
         contact_number: "",
@@ -40,7 +40,7 @@ function TupadForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.first_name || !formData.last_name || !formData.birthday) {
+        if (!formData.first_name || !formData.last_name || !formData.date_of_birth) {
             alert("Please fill in all required fields (Name and Birthday).");
             return;
         }
@@ -60,7 +60,7 @@ function TupadForm() {
                 first_name: "",
                 middle_name: "",
                 last_name: "",
-                birthday: "",
+                date_of_birth: "",
                 valid_id_type: "",
                 id_number: "",
                 contact_number: "",
@@ -132,8 +132,8 @@ function TupadForm() {
                     <div className="grid grid-cols-2 gap-4">
                         <input
                             type="date"
-                            name="birthday"
-                            value={formData.birthday}
+                            name="date_of_birth"
+                            value={formData.date_of_birth}
                             onChange={handleChange}
                             className={inputStyle}
                         />

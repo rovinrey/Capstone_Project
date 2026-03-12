@@ -22,7 +22,7 @@ exports.login = async (req, res) => {
 };
 exports.getProfile = async (req, res) => {
     try {
-        const data = await authService.getProfile(req.query.userId);
+        const data = await authService.getProfile(req.query.user_name);
         res.json(data);
     } catch (error) {
         res.status(404).json({ message: error.message });

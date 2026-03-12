@@ -1,6 +1,7 @@
 // tupad.services.js
 const db = require('../config/db');
 
+// 1. Apply to TUPAD
 exports.applyToTupad = async (data) => {
     const query = `
         INSERT INTO tupad_applications (
@@ -11,15 +12,16 @@ exports.applyToTupad = async (data) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    // MySQL expects DATE as 'YYYY-MM-DD'. 
-    // If your React form sends 'MM/DD/YYYY', we need to convert it.
-    const formattedBirthday = data.birthday ? new Date(data.birthday).toISOString().split('T')[0] : null;
+    // Careful with timezone shifts here. If it's already 'YYYY-MM-DD', just pass it directly!
+    const formattedBirthday = data.date_of_birth 
+        ? new Date(data.date_of_birth).toISOString().split('T')[0] 
+        : null;
 
     const values = [
-        data.first_name || '',        // Cannot be NULL
+        data.first_name || '',        
         data.middle_name || null, 
-        data.last_name || '',         // Cannot be NULL
-        formattedBirthday,            // Cannot be NULL
+        data.last_name || '',         
+        formattedBirthday,            
         data.age || null,
         data.gender || null,
         data.civil_status || null,
@@ -34,51 +36,46 @@ exports.applyToTupad = async (data) => {
 
     return await db.execute(query, values);
 };
-// approved tupad applications
-exports.approveApplication = async (id) => {
+// 2. Approve Application
+exports.approveTupadApplication = async (id) => {
     const connection = await db.getConnection(); 
     
     try {
         await connection.beginTransaction();
 
-        // 1. Fetch the full applicant data
         const [rows] = await connection.execute(
             'SELECT * FROM tupad_applications WHERE id = ?', 
             [id]
         );
 
-        if (rows.length === 0) {
-            throw new Error('Application not found');
-        }
-
+        if (rows.length === 0) throw new Error('Application not found');
         const app = rows[0];
 
-        // 2. Insert into beneficiaries table
-        // Defined 11 columns here:
+        // Handle missing address and extension_name gracefully
         const insertQuery = `
             INSERT INTO beneficiaries (
-                first_name, middle_name, last_name, extension_name,
+                id, first_name, middle_name, last_name, extension_name,
                 gender, civil_status, address, contact_number, 
                 program_type, approval_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `;  
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        `;
 
-        // You must provide exactly 10 values (the 11th is NOW())
         const insertValues = [
-            app.first_name || null,
-            app.middle_name || null,    
-            app.last_name || null,
+            app.id,
+            app.first_name,
+            app.middle_name,
+            app.last_name,
             app.extension_name || null,
-            app.gender || null,
-            app.civil_status || null,
-            app.address || null, // Check: was app.address in your original app object?
-            app.contact_number || null,
-            app.program_type || null
+            app.gender,
+            app.civil_status,
+            app.address || app.barangay || app.city || app.province || 'N/A',
+            app.contact_number,
+            app.program_type || 'TUPAD'
         ];
 
         await connection.execute(insertQuery, insertValues);
 
-        // 3. Update application status
+        // Update application status
         const updateQuery = `
             UPDATE tupad_applications
             SET status = 'Approved', updated_at = NOW()
@@ -90,18 +87,22 @@ exports.approveApplication = async (id) => {
     } catch (error) {
         if (connection) await connection.rollback();
         console.error("Database Error Detail:", error.message);
-        throw error;
+        throw error; 
     } finally {
         if (connection) connection.release();
     }
 };
-
-// Reject application by ID with optional reason
-exports.rejectApplication = async (id, ) => {
+// 3. Reject Application
+// FIXED: Removed trailing comma, added 'reason' parameter
+exports.rejectApplication = async (id, reason = null) => {
+    // If you have a remarks/reason column, you can add it here.
     const query = `
         UPDATE tupad_applications
-        SET status = 'Rejected',  updated_at = NOW()
+        SET status = 'Rejected', updated_at = NOW()
+        -- You could add: , remarks = ? here if you track reasons
         WHERE id = ?
     `;
-    return await db.execute(query, [id]);
+    
+    // If you add remarks to the query, remember to add 'reason' to this array
+    return await db.execute(query, [id]); 
 };

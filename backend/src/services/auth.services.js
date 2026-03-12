@@ -101,15 +101,16 @@ const login = async (body) => {
 };
 
 // get the usetname of the user who logged in
-const getProfile = async (user_name) => {
+const getProfile = async (body) => {
+    const { user_name } = body;
     try {
-        const users = await db.execute(
-            'SELECT  user_name,  FROM users WHERE user_name = ?',
+        const [users] = await db.execute(
+            'SELECT user_name FROM users WHERE user_name = ?',
             [user_name]
         );
         if (users.length === 0) {
             throw new Error("User not found");
-        }   
+        }
         return users[0];
     } catch (error) {
         console.error("❌ GET PROFILE ERROR:", error.message);

@@ -96,6 +96,16 @@ exports.updateDilpStatus = async (req, res) => {
 };
 
 // --- Application approval endpoints (beneficiary) ---
+// Get all applications from all programs
+exports.getAllApplications = async (req, res) => {
+    try {
+        const [applications] = await beneficiaryService.getAllApplications();
+        res.status(200).json(applications);
+    } catch (error) {
+        console.error("Error fetching all applications:", error.message);
+        res.status(500).json({ message: "Error fetching all applications", error: error.message });
+    }
+};
 
 // fetch all pending applications
 exports.getPendingApplications = async (req, res) => {
@@ -145,5 +155,20 @@ exports.rejectApplication = async (req, res) => {
     } catch (error) {
         console.error("Error rejecting application:", error.message);
         res.status(500).json({ message: "Error rejecting application", error: error.message });
+    }
+};
+
+// approved tupad application 
+exports.approvedTupadApplication = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await tupadService.approveTupadApplication(id);
+        res.status(200).json({ message: "Tupad application approved successfully!" });
+    } catch (error) {
+        console.error("Error approving Tupad Application", error.message);
+        if (error.message === 'Application not found') {
+            return res.status(404).json({ message: "TUPAD application not found" });
+        }
+        res.status(500).json({ message: "Error approving TUPAD application", error: error.message });
     }
 };

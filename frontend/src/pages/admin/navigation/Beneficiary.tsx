@@ -109,6 +109,7 @@ const BeneficiaryPage = () => {
                             <tr>
                                 <th className="px-6 py-4 text-xs uppercase font-bold text-gray-500 tracking-wider">Name</th>
                                 <th className="px-6 py-4 text-xs uppercase font-bold text-gray-500 tracking-wider">Contact</th>
+                                <th className="px-6 py-4 text-xs uppercase font-bold text-gray-500 tracking-wider">Address</th>
                                 <th className="px-6 py-4 text-xs uppercase font-bold text-gray-500 tracking-wider">Program</th>
                                 <th className="px-6 py-4 text-xs uppercase font-bold text-gray-500 tracking-wider">Approved</th>
                                 <th className="px-6 py-4 text-xs uppercase font-bold text-gray-500 tracking-wider text-right">Actions</th>
@@ -120,7 +121,7 @@ const BeneficiaryPage = () => {
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
                                             <span className="font-semibold text-gray-900">
-                                                {b.fullName || b.name || "-"}
+                                                {b.fullName || b.name || b.first_name || b.last_name ? `${b.first_name || ''} ${b.last_name || ''}`.trim() : "N/A"}
                                             </span>
                                             {b.email && (
                                                 <span className="text-xs text-gray-500">
@@ -130,15 +131,18 @@ const BeneficiaryPage = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                                        {b.phone || b.contact || "-"}
+                                        {b.phone || b.contact || b.contact_number || "N/A"}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                                        {b.address || b.barangay || b.city || b.province || "N/A"}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className="px-2 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-purple-50 text-purple-600">
-                                            {b.program_type || b.program || "-"}
+                                            {b.program_type || b.program || "N/A"}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600">
-                                        {b.approved_at ? new Date(b.approved_at).toLocaleDateString() : "-"}
+                                        {b.approval_date || b.approved_at ? new Date(b.approval_date || b.approved_at).toLocaleDateString() : "N/A"}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
