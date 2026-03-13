@@ -1,0 +1,104 @@
+import { NavLink, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  FileText,
+  Clock,
+  CreditCard,
+  LogOut,
+  X,
+  Menu
+} from 'lucide-react';
+import { logout as clearAuth } from '../utils/auth';
+
+interface BeneficiarySidebarProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
+
+function BeneficiarySidebar({ isOpen, setIsOpen }: BeneficiarySidebarProps) {
+    // menus for beneficiary
+    const menuItems = [
+        { name: "Dashboard", path: "/beneficiary", icon: <LayoutDashboard size={18} /> },
+        { name: "Application", path: "/beneficiary/application", icon: <FileText size={18} /> },
+        { name: "Attendance", path: "/beneficiary/attendance", icon: <Clock size={18} /> },
+        { name: "Payment", path: "/beneficiary/payment", icon: <CreditCard size={18} /> },
+    ];
+
+    const navigate = useNavigate();
+
+    const logout = async () => {
+        // clear client-side storage
+        clearAuth();
+
+        // optionally hit backend for audit or cookie clearance
+        try {
+            await fetch('http://localhost:5000/logout', { method: 'POST' });
+        } catch {
+            // ignore network errors, user is logging out anyway
+        }
+
+        navigate('/login');
+    }
+
+    return (
+        <aside className={`${
+            isOpen
+                ? 'fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col z-50 lg:relative lg:w-64 lg:min-h-screen lg:sticky lg:top-0 transition-all duration-300'
+                : 'hidden lg:flex lg:flex-col lg:relative lg:w-16 lg:min-h-screen lg:bg-white lg:border-r lg:border-gray-200 lg:sticky lg:top-0 transition-all duration-300'
+        }`}>
+            {/* Logo Section */}
+            <div className="p-8 border-b border-gray-100 relative">
+                <h2 className={`text-2xl font-black tracking-tighter text-blue-600 leading-tight ${!isOpen && 'text-center'}`}>
+                    DOLE {isOpen && <span className="text-gray-800 font-light text-lg block">tupad & pangkabuhayan</span>}
+                </h2>
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="absolute top-4 right-4 p-1 rounded-md hover:bg-gray-100 transition-colors hidden lg:block"
+                >
+                    {isOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
+            </div>
+
+            {/* Navigation Links */}
+            <nav className="flex-1 mt-6 px-4 space-y-2">
+                {menuItems.map((item) => (
+                    <NavLink
+                        key={item.name}
+                        to={item.path}
+                        onClick={() => { if (window.innerWidth < 1024) setIsOpen(false); }}
+                        className={({ isActive }) => `
+                            flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
+                            ${isActive
+                                ? "bg-blue-600 text-white shadow-lg shadow-blue-100"
+                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"}
+                        `}
+                    >
+                        {({ isActive }) => (
+                            <>
+                                <span className={`${isActive ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}>
+                                    {item.icon}
+                                </span>
+                                <span className={`text-sm font-semibold tracking-wide ${!isOpen && 'hidden'}`}>
+                                    {item.name}
+                                </span>
+                            </>
+                        )}
+                    </NavLink>
+                ))}
+            </nav>
+
+            {/* Bottom Section */}
+            <div className="p-4 border-t border-gray-100">
+                <button
+                    onClick={logout}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
+                >
+                    <LogOut size={18} />
+                    <span className={`${!isOpen && 'hidden'}`}>Log Out</span>
+                </button>
+            </div>
+        </aside>
+    );
+}
+
+export default BeneficiarySidebar;

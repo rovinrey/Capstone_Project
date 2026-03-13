@@ -35,6 +35,8 @@ function Login() {
 
             const role = response.data.role.toLowerCase();
             localStorage.setItem("role", role);
+            localStorage.setItem("token", response.data.token); // Store JWT token
+            localStorage.setItem("user_name", response.data.user.user_name); // Store user_name for profile
 
             if (role === "admin") {
                 navigate("/admin");

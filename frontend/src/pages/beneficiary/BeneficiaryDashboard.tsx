@@ -1,109 +1,140 @@
 import { useEffect, useState } from "react";
-import Topnav from '../../components/TopNav';
-import WelcomeBanner from "../../components/Welcomebanner";
-import { ClipboardList, LayoutGrid, Clock } from "lucide-react"; 
+import { useNavigate } from "react-router-dom"; // Added for redirection
 import axios from "axios";
+import { ClipboardList, LayoutGrid, Clock, AlertCircle } from "lucide-react";
 
+// Components & Forms
+import WelcomeBanner from "../../components/Welcomebanner";
 import TupadForm from "./forms/TUPADform";
 import SpesForm from './forms/SpesApplicationForm';
 import DilpForm from "./forms/DILPform";
 import GIPform from "./forms/GIPform";
 import JobSeekerForm from "./forms/JobseekersForm";
-
 import Attendance from '../../components/Attendance';
-import ApplicationStatus from '../../components/ApplicationStatus'
 
 function BeneficiaryDashboard() {
-    const [view, setView] = useState('apply'); 
+    const navigate = useNavigate();
+    const [view, setView] = useState('apply');
     const [activeForm, setActiveForm] = useState('TUPAD');
     const [user, setUser] = useState<any>(null);
-
-    useEffect(() => {
-        // get user profile on component mount
-        const fetchUserProfile = async () => {
-            const token = localStorage.getItem('token');
-            try {
-                const response = await axios.get('http://localhost:5000/api/auth/getProfile', {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-                setUser(response.data);
-            } catch (error) {
-                if (error.response && error.response.status === 401) {
-                    console.error('Unauthorized: 401 error', error);
-                } else {
-                    console.error('Error fetching user profile:', error);
-                }
-            }
-        };
-        fetchUserProfile();
-    }, []);
-
-    // get the status of the user's applications 
-    const [applicationStatus, setApplicationStatus] = useState({
+    const [error, setError] = useState<string | null>(null);
+    const [statusLoading, setStatusLoading] = useState(true);
+    const [applicationStatus, setApplicationStatus] = useState<{ [key: string]: string | null }>({
         TUPAD: null,
         SPES: null,
         DILP: null,
     });
-    const [statusLoading, setStatusLoading] = useState(true);
 
     useEffect(() => {
-        const fetchApplicationStatus = async () => {
-            setStatusLoading(true);
+        const fetchAllDashboardData = async () => {
+            const token = localStorage.getItem('token');
+            const user_name = localStorage.getItem('user_name');
+            const role = localStorage.getItem('role');
+
+            // Role-based access control
+            if (!token || role !== 'beneficiary') {
+                console.warn("No authentication token or invalid role, redirecting to login...");
+                navigate('/login');
+                return;
+            }
+
             try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get('http://localhost:5000/api/applications/status', {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-                setApplicationStatus({
-                    TUPAD: response.data?.TUPAD || null,
-                    SPES: response.data?.SPES || null,
-                    DILP: response.data?.DILP || null,
-                });
-            } catch (error) {
-                if (error.response && error.response.status === 401) {
-                    console.error('Unauthorized: 401 error', error);
+                const [profileRes, statusRes] = await Promise.allSettled([
+                    axios.get(`http://localhost:5000/api/auth/getProfile?user_name=${user_name}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                    axios.get('http://localhost:5000/api/applications/status', {
+                        headers: { Authorization: `Bearer ${token}` },
+                    })
+                ]);
+
+                if (profileRes.status === 'fulfilled') {
+                    setUser(profileRes.value.data);
                 } else {
-                    setApplicationStatus({ TUPAD: null, SPES: null, DILP: null });
-                    console.error("Error fetching application status:", error);
+                    const status = profileRes.reason.response?.status;
+                    if (status === 401 || status === 403) {
+                        localStorage.removeItem('token');
+                        navigate('/login');
+                        return;
+                    }
+                    setError(status === 404 
+                        ? "Profile endpoint not found. Check backend routes." 
+                        : "Unable to load profile data.");
                 }
+
+                if (statusRes.status === 'fulfilled') {
+                    setApplicationStatus({
+                        TUPAD: statusRes.value.data?.TUPAD || null,
+                        SPES: statusRes.value.data?.SPES || null,
+                        DILP: statusRes.value.data?.DILP || null,
+                    });
+                }
+
+            } catch (err) {
+                console.error("Unexpected error:", err);
+                setError("An unexpected error occurred while syncing your data.");
             } finally {
                 setStatusLoading(false);
             }
         };
-        fetchApplicationStatus();
-    }, []);
-    
-    if (!user) {
+
+        fetchAllDashboardData();
+    }, [navigate]);
+
+    // Error State UI
+    if (error) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-red-100">
+                    <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">System Error</h2>
+                    <p className="text-gray-600 mb-6">{error}</p>
+                    <div className="flex flex-col gap-3">
+                        <button 
+                            onClick={() => window.location.reload()}
+                            className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                        >
+                            Retry Connection
+                        </button>
+                        <button 
+                            onClick={() => {
+                                localStorage.removeItem('token');
+                                navigate('/login');
+                            }}
+                            className="text-sm text-gray-500 hover:text-blue-600 font-medium"
+                        >
+                            Back to Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Loading State UI
+    if (statusLoading && !user) {
+        return (
+            <div className="flex items-center justify-center py-20">
                 <div className="flex flex-col items-center">
                     <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600 border-solid mb-4" />
-                    <span className="text-gray-600 text-lg font-semibold">Loading...</span>
+                    <span className="text-gray-600 text-lg font-semibold">Syncing Dashboard...</span>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="fixed top-0 w-full z-50 shadow-sm"> 
-                <Topnav />
-            </div>
-
-            <div className="pt-20 w-full px-4">
-                <WelcomeBanner text={`Welcome, ${user?.first_name || user?.user_name || 'User'}${user?.last_name ? ' ' + user.last_name : ''}!`} />
+        <div className="w-full">
+            <div className="w-full px-4">
+                <WelcomeBanner text={`Welcome, ${user?.first_name || user?.user_name || 'User'}!`} />
             </div>
 
             <main className="pb-12 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
                 {/* View Switcher Tabs */}
-                <div className="flex gap-4 mb-6 mt-4">
+                <div className="flex gap-4 mb-6 mt-4 overflow-x-auto pb-2">
                     <button
                         onClick={() => setView('apply')}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${view === 'apply' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${view === 'apply' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
                     >
                         <LayoutGrid size={18} />
                         New Application
@@ -111,7 +142,7 @@ function BeneficiaryDashboard() {
 
                     <button
                         onClick={() => setView('status')}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${view === 'status' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${view === 'status' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
                     >
                         <Clock size={18} />
                         Check Status
@@ -119,7 +150,7 @@ function BeneficiaryDashboard() {
 
                     <button
                         onClick={() => setView('attendance')}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${view === 'attendance' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${view === 'attendance' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
                     >
                         <ClipboardList size={18} />
                         Attendance
@@ -128,7 +159,6 @@ function BeneficiaryDashboard() {
 
                 <div className="bg-white p-6 md:p-10 rounded-2xl shadow-sm border border-gray-200">
                     {view === 'apply' ? (
-                        // ...existing code...
                         <>
                             <div className="mb-8">
                                 <h1 className="text-2xl font-black text-gray-900">Application Portal</h1>
@@ -161,41 +191,32 @@ function BeneficiaryDashboard() {
                             </div>
                         </>
                     ) : view === 'status' ? (
-                        statusLoading ? (
-                            <div className="text-center py-12">
-                                <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
-                                    <ClipboardList size={32} />
-                                </div>
-                                <h2 className="text-xl font-bold text-gray-900">Loading application status...</h2>
+                        <div className="text-center py-12">
+                            <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                                <ClipboardList size={32} />
                             </div>
-                        ) : (
-                            <div className="text-center py-12">
-                                <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
-                                    <ClipboardList size={32} />
-                                </div>
-                                <h2 className="text-xl font-bold text-gray-900">Application Status</h2>
-                                <div className="max-w-xs mx-auto mt-4 flex flex-col gap-4">
-                                    <div className="flex items-center gap-2 justify-between">
-                                        <span className="font-semibold">TUPAD:</span>
-                                        <span className={`px-2 py-1 rounded ${applicationStatus.TUPAD === 'Approved' ? 'bg-green-100 text-green-700' : applicationStatus.TUPAD === 'Pending' ? 'bg-yellow-100 text-yellow-700' : applicationStatus.TUPAD === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicationStatus.TUPAD || 'Not Applied'}</span>
+                            <h2 className="text-xl font-bold text-gray-900 mb-6">Application Status</h2>
+                            <div className="max-w-xs mx-auto flex flex-col gap-4">
+                                {['TUPAD', 'SPES', 'DILP'].map((program) => (
+                                    <div key={program} className="flex items-center gap-2 justify-between border-b pb-2">
+                                        <span className="font-semibold">{program}:</span>
+                                        <span className={`px-2 py-1 rounded text-sm font-bold ${
+                                            applicationStatus[program] === 'Approved' ? 'bg-green-100 text-green-700' : 
+                                            applicationStatus[program] === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 
+                                            applicationStatus[program] === 'Rejected' ? 'bg-red-100 text-red-700' : 
+                                            'bg-gray-100 text-gray-700'
+                                        }`}>
+                                            {applicationStatus[program] || 'Not Applied'}
+                                        </span>
                                     </div>
-                                    <div className="flex items-center gap-2 justify-between">
-                                        <span className="font-semibold">SPES:</span>
-                                        <span className={`px-2 py-1 rounded ${applicationStatus.SPES === 'Approved' ? 'bg-green-100 text-green-700' : applicationStatus.SPES === 'Pending' ? 'bg-yellow-100 text-yellow-700' : applicationStatus.SPES === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicationStatus.SPES || 'Not Applied'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 justify-between">
-                                        <span className="font-semibold">DILP:</span>
-                                        <span className={`px-2 py-1 rounded ${applicationStatus.DILP === 'Approved' ? 'bg-green-100 text-green-700' : applicationStatus.DILP === 'Pending' ? 'bg-yellow-100 text-yellow-700' : applicationStatus.DILP === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicationStatus.DILP || 'Not Applied'}</span>
-                                    </div>
-                                </div>
+                                ))}
                             </div>
-                        )
-                    ) : view === 'attendance' ? (
+                        </div>
+                    ) : (
                         <div className="py-12">
-                            {/* Attendance feature UI */}
                             <Attendance />
                         </div>
-                    ) : null}
+                    )}
                 </div>
             </main>
         </div>

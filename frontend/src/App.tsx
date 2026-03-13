@@ -1,11 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useState } from 'react';
+import { Menu } from 'lucide-react';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 
 import BeneficiaryDashboard from './pages/beneficiary/BeneficiaryDashboard';
+import BeneficiaryApplication from './pages/beneficiary/BeneficiaryApplication';
+import BeneficiaryAttendance from './pages/beneficiary/BeneficiaryAttendance';
+import BeneficiaryPayment from './pages/beneficiary/BeneficiaryPayment';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import Sidebar from "./components/Sidebar"; // Check your actual path here
+import BeneficiarySidebar from "./components/BeneficiarySidebar";
+
+
 import AdminDashboard from './pages/admin/navigation/AdminDashboard';
 import Beneficiaries from './pages/admin/navigation/Beneficiary';
 import Programs from './pages/admin/navigation/Programs';
@@ -42,6 +50,46 @@ const StaffLayout = () => (
     </main>
   </div>
 );
+
+// Beneficiary Layout
+const BeneficiaryLayout = () => {
+  const [isOpen, setIsOpen] = useState(false); // Default closed on mobile
+
+  return (
+    <div className="bg-gray-50 min-h-screen">
+      {/* Mobile Header */}
+      <div className="lg:hidden flex items-center p-4 bg-white border-b border-gray-200 z-40 relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+        >
+          <Menu size={24} />
+        </button>
+        <h1 className="ml-4 text-xl font-bold text-blue-600">Beneficiary Portal</h1>
+      </div>
+
+      {/* Sidebar Overlay for Mobile */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className="lg:flex lg:flex-row">
+        <div className="lg:w-64 lg:flex-shrink-0">
+          <BeneficiarySidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+        </div>
+
+        {/* Main content */}
+        <main className="flex-1 p-4 lg:p-8">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
 function App() {
   return (
     <BrowserRouter>
@@ -87,15 +135,19 @@ function App() {
         </Route>
 
 
-        {/* Beneficiary Protected Route (No Admin Sidebar) */}
+        {/* Beneficiary Protected Routes with Sidebar */}
         <Route
-          path="/beneficiary"
           element={
             <ProtectedRoute allowedRole="beneficiary">
-              <BeneficiaryDashboard />
+              <BeneficiaryLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route path="/beneficiary" element={<BeneficiaryDashboard />} />
+          <Route path="/beneficiary/application" element={<BeneficiaryApplication />} />
+          <Route path="/beneficiary/attendance" element={<BeneficiaryAttendance />} />
+          <Route path="/beneficiary/payment" element={<BeneficiaryPayment />} />
+        </Route>
 
 
 

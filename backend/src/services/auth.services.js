@@ -102,7 +102,8 @@ const login = async (body) => {
 
 // get the usetname of the user who logged in
 const getProfile = async (body) => {
-    const { user_name } = body;
+    // Accept user_name directly (from query string)
+    const user_name = typeof body === 'string' ? body : body.user_name;
     try {
         const [users] = await db.execute(
             'SELECT user_name FROM users WHERE user_name = ?',

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Filter, Download, MoreVertical, Edit, Eye } from "lucide-react";
 import axios from "axios";
+import AttendanceMonitoringTable from "../../../components/AttendanceMonitoringTable";
 
 interface Beneficiary {
     id: number;
@@ -171,6 +172,11 @@ const BeneficiaryPage = () => {
                         <button className="px-3 py-1 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all">Next</button>
                     </div>
                 </div>
+            </div>
+
+            {/* Attendance Monitoring Section */}
+            <div className="mt-8">
+                <AttendanceMonitoringTable />
             </div>
         </div>
     );
