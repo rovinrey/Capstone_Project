@@ -14,11 +14,11 @@ function Sidebar() {
 
     // menus 
     const menuItems = [
-        { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
-        { name: "Beneficiary", path: "/beneficiaries", icon: <Users size={18} /> },
-        { name: "Payment", path: "/payment", icon: <CreditCard size={18} /> },
-        { name: "Programs", path: "/programs", icon: <ClipboardList size={18} /> },
-        { name: "Reports", path: "/reports", icon: <BarChart3 size={18} /> },
+        { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} />, exact: true },
+        { name: "Beneficiary", path: "/beneficiaries", icon: <Users size={18} />, exact: true },
+        { name: "Payment", path: "/payment", icon: <CreditCard size={18} />, exact: true },
+        { name: "Programs", path: "/programs", icon: <ClipboardList size={18} />, exact: true },
+        { name: "Reports", path: "/reports", icon: <BarChart3 size={18} />, exact: true },
     ];
 
     const navigate = useNavigate();
@@ -51,6 +51,7 @@ function Sidebar() {
                     <NavLink
                         key={item.name}
                         to={item.path}
+                        end={item.exact}
                         className={({ isActive }) => `
                             flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
                             ${isActive 

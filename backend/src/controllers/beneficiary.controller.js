@@ -46,3 +46,22 @@ exports.exportBeneficiaries = async (req, res) => {
         res.status(500).json({ message: 'Failed to create export file.' });
     }
 };
+
+exports.getBeneficiaryApplicationDetails = async (req, res) => {
+    try {
+        const applicationId = Number(req.params.applicationId);
+        if (!applicationId) {
+            return res.status(400).json({ message: 'applicationId is required' });
+        }
+
+        const details = await beneficiaryService.getBeneficiaryApplicationDetails(applicationId);
+        if (!details) {
+            return res.status(404).json({ message: 'Beneficiary application not found' });
+        }
+
+        res.json(details);
+    } catch (err) {
+        console.error('DETAIL FETCH ERROR:', err.message);
+        res.status(500).json({ message: err.message });
+    }
+};

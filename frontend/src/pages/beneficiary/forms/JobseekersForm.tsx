@@ -84,11 +84,11 @@ function JobSeekerForm() {
     "w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none";
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4">
-      <div className="max-w-5xl mx-auto bg-white border-t-8 border-green-600 shadow-xl rounded-lg p-8 space-y-8">
+    <div className="w-full bg-slate-50 py-4 sm:py-6 md:py-8 px-0 sm:px-1 md:px-2">
+      <div className="max-w-5xl mx-auto bg-white border-t-8 border-green-600 shadow-xl rounded-xl p-4 sm:p-6 md:p-8 space-y-8">
 
         <div>
-          <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-3">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-800 flex items-center gap-3">
             <Briefcase size={28} /> Job Seeker Profile
           </h2>
           <p className="text-green-700 font-medium italic">

@@ -56,9 +56,9 @@ const BeneficiaryLayout = () => {
   const [isOpen, setIsOpen] = useState(false); // Default closed on mobile
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen overflow-x-hidden">
       {/* Mobile Header */}
-      <div className="lg:hidden flex items-center p-4 bg-white border-b border-gray-200 z-40 relative">
+      <div className="lg:hidden sticky top-0 flex items-center p-4 bg-white border-b border-gray-200 z-40">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="p-2 rounded-md hover:bg-gray-100 transition-colors"
@@ -83,7 +83,7 @@ const BeneficiaryLayout = () => {
         </div>
 
         {/* Main content */}
-        <main className="flex-1 p-4 lg:p-8">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8">
           <Outlet />
         </main>
       </div>

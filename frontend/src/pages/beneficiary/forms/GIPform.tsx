@@ -66,9 +66,9 @@ export default function GIPRegistration() {
         "w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition";
 
     return (
-        <div className="max-w-5xl mx-auto p-6 bg-white shadow-xl rounded-lg border border-gray-100 mt-10">
+        <div className="max-w-5xl mx-auto p-4 sm:p-6 bg-white shadow-xl rounded-xl border border-gray-100 mt-4 sm:mt-6 md:mt-8">
             <header className="mb-8 text-center">
-                <h1 className="text-3xl font-extrabold text-blue-900">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-blue-900">
                     GIP REGISTRATION FORM
                 </h1>
                 <p className="text-gray-500">

@@ -9,10 +9,9 @@ interface Application {
     last_name: string;
     program_type: string;
     contact_number: string;
-    occupation: string;
-    monthly_income: number;
+    address: string | null;
     status: string;
-    created_at: string;
+    applied_at: string;
 }
 
 const ApplicationApproval = () => {
@@ -141,10 +140,7 @@ const ApplicationApproval = () => {
                                         Contact
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        Occupation
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        Monthly Income
+                                        Address
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
                                         Status
@@ -170,10 +166,7 @@ const ApplicationApproval = () => {
                                             {app.contact_number}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
-                                            {app.occupation}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
-                                            ₱{app.monthly_income?.toLocaleString() || "0"}
+                                            {app.address || '-'}
                                         </td>
                                         <td className="px-6 py-4 text-sm">
                                             <span

@@ -59,7 +59,9 @@ function DilpForm() {
 
       
         barangay: '',
-        city: '',
+    municipality: '',
+    district: '',
+    street: '',
         province: '',
 
         contact_person: '',
@@ -118,7 +120,9 @@ function DilpForm() {
                 category: 'Formation',
                 proposed_amount: '',
                 barangay: '',
-                city: '',
+                municipality: '',
+                district: '',
+                street: '',
                 province: '',
                 contact_person: '',
                 mobile_number: '',
@@ -134,6 +138,7 @@ function DilpForm() {
 
         } catch (err: any) {
             setError(err.message || "Submission failed");
+            console.error("Submission error:", err);
         } finally {
             setLoading(false);
         }
@@ -143,8 +148,8 @@ function DilpForm() {
         "w-full mt-1 p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none";
 
     return (
-        <div className="min-h-screen bg-slate-50 py-10 px-4">
-            <div className="max-w-5xl mx-auto bg-white border-t-8 border-green-600 shadow-xl rounded-lg p-8 space-y-6">
+        <div className="w-full bg-slate-50 py-4 sm:py-6 md:py-8 px-0 sm:px-1 md:px-2">
+            <div className="max-w-5xl mx-auto bg-white border-t-8 border-green-600 shadow-xl rounded-xl p-4 sm:p-6 md:p-8 space-y-6">
 
                 <h2 className="text-3xl font-extrabold text-gray-800">
                     DILP Application Form
@@ -164,31 +169,35 @@ function DilpForm() {
 
                
                 {/*PRoject location*/}
-                <h4>PROJECT LOCATION</h4>
-                <div className="grid md:grid-cols-3 gap-6">
-                      <input name="Province (Probinsya):" placeholder="Province (Probinsya)"></input>
+                <h4 className="text-base font-bold text-gray-700">Project Location</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                    <input name="province" placeholder="Province" value={formData.province} onChange={handleChange} className={inputStyle} />
+                    <input name="municipality" placeholder="Municipality" value={formData.municipality} onChange={handleChange} className={inputStyle} />
+                    <input name="district" placeholder="District" value={formData.district} onChange={handleChange} className={inputStyle} />
+                    <input name="barangay" placeholder="Barangay" value={formData.barangay} onChange={handleChange} className={inputStyle} />
+                    <input name="street" placeholder="Street" value={formData.street} onChange={handleChange} className={inputStyle} />
                 </div>
               
 
                  {/* Personal Info */}
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                     <input name="proponent_name" placeholder="Proponent Name" value={formData.proponent_name} onChange={handleChange} className={inputStyle}/>
                     <input name="sex" placeholder="Sex" value={formData.sex} onChange={handleChange} className={inputStyle}/>
                     <input name="civil_status" placeholder="Civil Status" value={formData.civil_status} onChange={handleChange} className={inputStyle}/>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <input type="date" name="birthdate" value={formData.birthdate} onChange={handleChange} className={inputStyle}/>
                     <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} className={inputStyle}/>
                 </div>
 
                 {/* Project Info */}
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <input name="project_title" placeholder="Project Title" value={formData.project_title} onChange={handleChange} className={inputStyle}/>
                     <input type="number" name="proposed_amount" placeholder="Proposed Amount" value={formData.proposed_amount} onChange={handleChange} className={inputStyle}/>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <select name="project_type" value={formData.project_type} onChange={handleChange} className={inputStyle}>
                         <option value="Individual">Individual</option>
                         <option value="Group">Group</option>
@@ -202,14 +211,7 @@ function DilpForm() {
                 </div>
 
                 {/* Address */}
-                <div className="grid md:grid-cols-4 gap-6">
-                    <input name="barangay" placeholder="Barangay" value={formData.barangay} onChange={handleChange} className={inputStyle}/>
-                    <input name="city" placeholder="City" value={formData.city} onChange={handleChange} className={inputStyle}/>
-                    <input name="province" placeholder="Province" value={formData.province} onChange={handleChange} className={inputStyle}/>
-                </div>
-
-                {/* Contact */}
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <input name="contact_person" placeholder="Contact Person" value={formData.contact_person} onChange={handleChange} className={inputStyle}/>
                     <input name="mobile_number" placeholder="Mobile Number" value={formData.mobile_number} onChange={handleChange} className={inputStyle}/>
                 </div>
@@ -218,7 +220,7 @@ function DilpForm() {
                 <textarea name="business_experience" placeholder="Business Experience" value={formData.business_experience} onChange={handleChange} className={inputStyle}/>
                 <textarea name="skills_training" placeholder="Skills / Trainings" value={formData.skills_training} onChange={handleChange} className={inputStyle}/>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <input type="number" name="estimated_monthly_income" placeholder="Estimated Monthly Income" value={formData.estimated_monthly_income} onChange={handleChange} className={inputStyle}/>
                     <input type="number" name="number_of_beneficiaries" placeholder="Number of Beneficiaries" value={formData.number_of_beneficiaries} onChange={handleChange} className={inputStyle}/>
                 </div>

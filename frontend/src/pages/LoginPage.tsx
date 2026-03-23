@@ -33,10 +33,26 @@ function Login() {
                 }
             );
 
-            const role = response.data.role.toLowerCase();
-            localStorage.setItem("role", role);
-            localStorage.setItem("token", response.data.token); // Store JWT token
-            localStorage.setItem("user_name", response.data.user.user_name); // Store user_name for profile
+            console.log("Login response:", response.data); // Debugging log
+
+            const { token, role, user } = response.data;
+
+            if (!user) {
+                throw new Error("User data missing in response");
+            }
+
+            const userRole = role.toLowerCase();
+            // check for common id naming variations (id, user_id, etc.)
+            const userId = user.id || user.user_id;
+
+            if (!userId) {
+                console.error("Backend did not provide a User ID. check the api response!");
+            }
+
+            localStorage.setItem("role", userRole);
+            localStorage.setItem("token",token); // Store JWT token
+            localStorage.setItem("user_name", user.user_name); // Store user_name for profile
+            localStorage.setItem("user_id", String(userId)); // Store user ID for form submissions
 
             if (role === "admin") {
                 navigate("/admin");
@@ -44,8 +60,9 @@ function Login() {
                 navigate("/beneficiary");
             }
         } catch (err: any) {
+            console.error("Login error:", err); // Debugging log
             setError(
-                err.response?.data?.message || "Connection error"
+                err.response?.data?.message || err.message || "Connection error"
             );
         }
     };

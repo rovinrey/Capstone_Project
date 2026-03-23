@@ -2,21 +2,23 @@ import { useState, useEffect } from "react";
 import { Loader, CheckCircle, XCircle } from "lucide-react";
 import StatCard from "../../../components/Card";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 interface Application {
     id: number;
+    user_id?: number;
     first_name: string;
     middle_name: string | null;
     last_name: string;
     program_type: string;
     contact_number: string;
-    occupation: string;
-    monthly_income: number;
+    address?: string | null;
     status: string;
     applied_at: string;
 }
 
 function AdminDashboard() {
+    const navigate = useNavigate();
 
     // cards
     const [stats, setStats] = useState({
@@ -91,7 +93,7 @@ function AdminDashboard() {
     const handleApprove = async (id: number) => {
         setProcessingId(id);
         try {
-            const res = await axios.put(`http://localhost:5000/api/forms/approved/application/tupad/${id}`);
+            const res = await axios.put(`http://localhost:5000/api/forms/applications/${id}/approve`);
             if (res.status === 200) {
                 setRecentApps(recentApps.filter(app => app.id !== id));
                 alert("Application approved successfully");
@@ -143,7 +145,7 @@ function AdminDashboard() {
                 <div className="p-6 border-b border_gray-100 flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-gray-800">Recent Applications</h2>
                     <button
-                        onClick={() => window.location.href = '/admin/navigation/applications'}
+                        onClick={() => navigate('/applications')}
                         className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                     >
                         View All
@@ -167,11 +169,12 @@ function AdminDashboard() {
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-semibold">
                                 <tr>
+                                    <th className="px-6 py-4">User ID</th>
                                     <th className="px-6 py-4">Applicant Name</th>
                                     <th className="px-6 py-4">Program</th>
                                     <th className="px-6 py-4">Contact</th>
-                                    <th className="px-6 py-4">Occupation</th>
-                                    <th className="px-6 py-4">Date Applied</th>
+                                    <th className="px-6 py-4">Address</th>
+                                    <th className="px-6 py-4">Applied On</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4 text-center">Action</th>
                                 </tr>
@@ -179,6 +182,7 @@ function AdminDashboard() {
                             <tbody className="divide-y divide-gray-100">
                                 {recentApps.map((app, idx) => (
                                     <tr key={app.id || idx} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 text-sm text-gray-700">{app.user_id ?? 'N/A'}</td>
                                         <td className="px-6 py-4 font-medium text-gray-900">
                                             {app.first_name} {app.middle_name ? app.middle_name + ' ' : ''}{app.last_name}
                                         </td>
@@ -188,10 +192,10 @@ function AdminDashboard() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
-                                            {app.contact_number}
+                                            {app.contact_number || '-'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
-                                            {app.occupation || '-'}
+                                            {app.address ?? '-'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             {formatDate(app.applied_at)}

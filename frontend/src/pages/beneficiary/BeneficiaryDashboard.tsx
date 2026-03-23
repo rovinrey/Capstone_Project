@@ -11,6 +11,8 @@ import DilpForm from "./forms/DILPform";
 import GIPform from "./forms/GIPform";
 import JobSeekerForm from "./forms/JobseekersForm";
 import Attendance from '../../components/Attendance';
+import ApplicationStatusPanel from '../../components/ApplicationStatusPanel';
+import applicationStatusAPI, { type ApplicationSubmission } from '../../api/applicationStatus.api';
 
 function BeneficiaryDashboard() {
     const navigate = useNavigate();
@@ -23,8 +25,11 @@ function BeneficiaryDashboard() {
         TUPAD: null,
         SPES: null,
         DILP: null,
+        GIP: null,
+        Jobseeker: null,
     });
-
+    const [submissions, setSubmissions] = useState<ApplicationSubmission[]>([]);
+   
     useEffect(() => {
         const fetchAllDashboardData = async () => {
             const token = localStorage.getItem('token');
@@ -39,13 +44,13 @@ function BeneficiaryDashboard() {
             }
 
             try {
+                const userId = localStorage.getItem('user_id');
+
                 const [profileRes, statusRes] = await Promise.allSettled([
                     axios.get(`http://localhost:5000/api/auth/getProfile?user_name=${user_name}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
-                    axios.get('http://localhost:5000/api/applications/status', {
-                        headers: { Authorization: `Bearer ${token}` },
-                    })
+                    applicationStatusAPI.getStatus(userId || '', token)
                 ]);
 
                 if (profileRes.status === 'fulfilled') {
@@ -63,11 +68,8 @@ function BeneficiaryDashboard() {
                 }
 
                 if (statusRes.status === 'fulfilled') {
-                    setApplicationStatus({
-                        TUPAD: statusRes.value.data?.TUPAD || null,
-                        SPES: statusRes.value.data?.SPES || null,
-                        DILP: statusRes.value.data?.DILP || null,
-                    });
+                    setApplicationStatus(statusRes.value.summary || {});
+                    setSubmissions(statusRes.value.submissions || []);
                 }
 
             } catch (err) {
@@ -79,6 +81,7 @@ function BeneficiaryDashboard() {
         };
 
         fetchAllDashboardData();
+     
     }, [navigate]);
 
     // Error State UI
@@ -125,16 +128,16 @@ function BeneficiaryDashboard() {
 
     return (
         <div className="w-full">
-            <div className="w-full px-4">
+            <div className="w-full px-1 sm:px-2 md:px-4">
                 <WelcomeBanner text={`Welcome, ${user?.first_name || user?.user_name || 'User'}!`} />
             </div>
 
-            <main className="pb-12 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <main className="pb-8 md:pb-12 w-full px-1 sm:px-2 md:px-4 lg:px-8 max-w-7xl mx-auto">
                 {/* View Switcher Tabs */}
-                <div className="flex gap-4 mb-6 mt-4 overflow-x-auto pb-2">
+                <div className="flex gap-2 sm:gap-3 md:gap-4 mb-4 md:mb-6 mt-4 overflow-x-auto pb-2">
                     <button
                         onClick={() => setView('apply')}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${view === 'apply' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
+                        className={`flex items-center gap-2 px-4 sm:px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${view === 'apply' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
                     >
                         <LayoutGrid size={18} />
                         New Application
@@ -142,7 +145,7 @@ function BeneficiaryDashboard() {
 
                     <button
                         onClick={() => setView('status')}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${view === 'status' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
+                        className={`flex items-center gap-2 px-4 sm:px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${view === 'status' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
                     >
                         <Clock size={18} />
                         Check Status
@@ -150,26 +153,26 @@ function BeneficiaryDashboard() {
 
                     <button
                         onClick={() => setView('attendance')}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${view === 'attendance' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
+                        className={`flex items-center gap-2 px-4 sm:px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${view === 'attendance' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white text-gray-500 hover:bg-gray-100"}`}
                     >
                         <ClipboardList size={18} />
                         Attendance
                     </button>
                 </div>
 
-                <div className="bg-white p-6 md:p-10 rounded-2xl shadow-sm border border-gray-200">
+                <div className="bg-white p-4 sm:p-5 md:p-8 rounded-2xl shadow-sm border border-gray-200">
                     {view === 'apply' ? (
                         <>
-                            <div className="mb-8">
-                                <h1 className="text-2xl font-black text-gray-900">Application Portal</h1>
+                            <div className="mb-6 md:mb-8">
+                                <h1 className="text-xl sm:text-2xl font-black text-gray-900">Application Portal</h1>
                                 <p className="text-gray-500 text-sm mt-1">Select a program to start your application.</p>
                             </div>
-                            <div className="mb-10">
-                                <div className="relative max-w-md">
+                            <div className="mb-6 md:mb-10">
+                                <div className="relative w-full md:max-w-md">
                                     <select
                                         value={activeForm}
                                         onChange={(e) => setActiveForm(e.target.value)}
-                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 appearance-none focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                                        className="w-full p-3.5 md:p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 appearance-none focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm md:text-base"
                                     >
                                         <option value="TUPAD">TUPAD (Emergency Employment)</option>
                                         <option value="SPES">SPES (Student Employment)</option>
@@ -191,26 +194,8 @@ function BeneficiaryDashboard() {
                             </div>
                         </>
                     ) : view === 'status' ? (
-                        <div className="text-center py-12">
-                            <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
-                                <ClipboardList size={32} />
-                            </div>
-                            <h2 className="text-xl font-bold text-gray-900 mb-6">Application Status</h2>
-                            <div className="max-w-xs mx-auto flex flex-col gap-4">
-                                {['TUPAD', 'SPES', 'DILP'].map((program) => (
-                                    <div key={program} className="flex items-center gap-2 justify-between border-b pb-2">
-                                        <span className="font-semibold">{program}:</span>
-                                        <span className={`px-2 py-1 rounded text-sm font-bold ${
-                                            applicationStatus[program] === 'Approved' ? 'bg-green-100 text-green-700' : 
-                                            applicationStatus[program] === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 
-                                            applicationStatus[program] === 'Rejected' ? 'bg-red-100 text-red-700' : 
-                                            'bg-gray-100 text-gray-700'
-                                        }`}>
-                                            {applicationStatus[program] || 'Not Applied'}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="py-1 sm:py-2 md:py-4">
+                            <ApplicationStatusPanel summary={applicationStatus} submissions={submissions} />
                         </div>
                     ) : (
                         <div className="py-12">

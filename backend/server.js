@@ -1,11 +1,13 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const db = require('./src/config/db.js'); 
-const formRoutes = require('./src/routes/form.routes.js');
+// --- ROUTES ---
+
 const programRoutes = require('./src/routes/program.routes.js');
 const authRoutes = require('./src/routes/auth.routes.js');
 const beneficiaryRoutes = require('./src/routes/beneficiary.routes.js');
-const applicationsRoutes = require('./src/routes/applications.routes.js');
+const applicationsRoutes = require('./src/routes/application.routes.js');
+const attendanceRoutes = require('./src/routes/attendance.routes.js');
 
 // --- MIDDLEWARE ---
 const app = express();
@@ -23,11 +25,13 @@ app.post('/logout', (req, res) => {
 }); 
 
 // --- SYSTEM ROUTES ---
-app.use('/api/forms', formRoutes);
+app.use('/api/tupad', require('./src/routes/tupad.routes.js')); // TUPAD-specific routes
+app.use('/api/forms', applicationsRoutes); // This will handle all application-related routes
 app.use('/api/programs', programRoutes);
 // expose beneficiaries endpoint so frontend can fetch approved applicants
 app.use('/api/beneficiaries', beneficiaryRoutes);
 app.use('/api/applications', applicationsRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 const PORT = 5000;
 app.listen(PORT, () => {

@@ -1,122 +1,157 @@
 const db = require('../config/db');
 
-// apply for SPES
+// Apply to SPES and create both central and program-specific records.
 exports.applyToSpes = async (data) => {
-    try {
-        // 1. Format date (handling date_of_birth from frontend)
-        const formattedBirthday = data.date_of_birth 
-            ? new Date(data.date_of_birth).toISOString().split('T')[0] 
-            : null;
-
-        // 3. Single Insert into spes_applications
-        const query = `
-            INSERT INTO spes_applications (
-                first_name, middle_name, last_name, date_of_birth, age, 
-                gender, civil_status, address, contact_number, email,
-                school, course, year_level, gwa,
-                parent_name, parent_occupation, monthly_income, 
-               program_type, applied_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `;
-
-        const values = [
-            data.first_name || '',
-            data.middle_name || null,
-            data.last_name || '',
-            formattedBirthday,
-            data.age || null,
-            data.gender || null,
-            data.civil_status || null,
-            data.address || null,
-            data.contact_number || null,
-            data.email || null,
-            data.school || null,       // Mapped from school
-            data.course || null,       // Mapped from course
-            data.year_level || null,    // Mapped from yearLevel
-            data.gwa || null,          // Mapped from gpa
-            data.parent_name || null,
-            data.parent_occupation || null,
-            data.family_income || 0,   // Mapped from family_income         // Mapped from applied_at     
-            'SPES'
-        ];
-
-        const [result] = await db.execute(query, values);
-        
-        return { success: true, insertId: result.insertId };
-    } catch (error) {
-        console.error("SPES Application Error:", error.message);
-        throw error;
+    const userId = data.user_id || data.userId;
+    if (!userId) {
+        throw new Error('User ID is required for SPES application');
     }
-};
 
-// Apply to SPES program
-exports.approveApplication = async (id) => {
-    const connection = await db.getConnection(); 
-    
+    const connection = await db.getConnection();
+
     try {
         await connection.beginTransaction();
 
-        // 1. Fetch the full applicant data
-        const [rows] = await connection.execute(
-            'SELECT * FROM spes_applications WHERE id = ?', 
-            [id]
-        );
+        const appQuery = `
+            INSERT INTO applications (
+                user_id, program_type, status, applied_at
+            ) VALUES (?, 'SPES', 'Pending', NOW())
+        `;
+        const [appResult] = await connection.execute(appQuery, [userId]);
+        const applicationId = appResult.insertId;
 
-        if (rows.length === 0) {
-            throw new Error('Application not found');
-        }
+        const spesQuery = `
+            INSERT INTO spes_details (
+                application_id, place_of_birth, citizenship,
+                social_media_account, civil_status, sex, type_of_student, parent_status,
+                father_name, father_occupation, father_contact,
+                mother_maiden_name, mother_occupation, mother_contact,
+                education_level, name_of_school, degree_earned_course, year_level,
+                present_address, permanent_address
+            ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
-        const app = rows[0];
-
-        // 2. Insert into beneficiaries table
-        // Defined 11 columns here:
-        const insertQuery = `
-            INSERT INTO beneficiaries (
-                first_name, middle_name, last_name, extension_name,
-                gender, civil_status, address, contact_number, 
-                program_type, approval_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `;  
-
-        // You must provide exactly 10 values (the 11th is NOW())
-        const insertValues = [
-            app.first_name || null,
-            app.middle_name || null,    
-            app.last_name || null,
-            app.extension_name || null,
-            app.gender || null,
-            app.civil_status || null,
-            app.address || null, // Check: was app.address in your original app object?
-            app.contact_number || null,
-            app.program_type || null
+        const spesValues = [
+            applicationId,
+            data.place_of_birth || null,
+            data.citizenship || 'Filipino',
+            data.social_media_account || null,
+            data.civil_status || 'Single',
+            data.sex || 'Male',
+            data.type_of_student || 'Student',
+            data.parent_status || 'Living together',
+            data.father_name || null,
+            data.father_occupation || null,
+            data.father_contact || null,
+            data.mother_maiden_name || null,
+            data.mother_occupation || null,
+            data.mother_contact || null,
+            data.education_level || 'Secondary',
+            data.name_of_school || null,
+            data.degree_earned_course || null,
+            data.year_level || null,
+            data.present_address || null,
+            data.permanent_address || null
         ];
 
-        await connection.execute(insertQuery, insertValues);
-
-        // 3. Update application status
-        const updateQuery = `
-            UPDATE spes_applications
-            SET application_status = 'Approved', updated_at = NOW()
-            WHERE id = ?
-        `;
-        await connection.execute(updateQuery, [id]);
-
+        await connection.execute(spesQuery, spesValues);
         await connection.commit();
+
+        return { success: true, insertId: applicationId };
     } catch (error) {
-        if (connection) await connection.rollback();
-        console.error("Database Error Detail:", error.message);
+        await connection.rollback();
+        console.error('SPES Application Error:', error.message);
         throw error;
     } finally {
-        if (connection) connection.release();
+        connection.release();
     }
 };
 
-// Reject application by ID with optional reason
-exports.rejectApplication = async (id, reason) => {
+// Get SPES details by application_id.
+exports.getSpesDetails = async (applicationId) => {
+    try {
+        const query = `SELECT * FROM spes_details WHERE application_id = ?`;
+        const [rows] = await db.execute(query, [applicationId]);
+        return rows[0] || null;
+    } catch (error) {
+        console.error('Error fetching SPES details:', error.message);
+        throw error;
+    }
+};
+
+// Update SPES details.
+exports.updateSpesDetails = async (detailId, data) => {
+    try {
+        const query = `
+            UPDATE spes_details SET
+                gsis_beneficiary = ?, place_of_birth = ?, citizenship = ?,
+                social_media_account = ?, status = ?, sex = ?, type_of_student = ?, parent_status = ?,
+                is_pwd = ?, is_senior_citizen = ?, is_indigenous_people = ?, is_displaced_worker = ?, is_ofw_descendant = ?,
+                father_name = ?, father_occupation = ?, father_contact = ?,
+                mother_maiden_name = ?, mother_occupation = ?, mother_contact = ?,
+                education_level = ?, name_of_school = ?, degree_earned_course = ?, year_level_grade = ?, date_of_attendance = ?,
+                present_address = ?, permanent_address = ?
+            WHERE detail_id = ?
+        `;
+
+        const values = [
+            data.gsis_beneficiary || null,
+            data.place_of_birth || null,
+            data.citizenship || 'Filipino',
+            data.social_media_account || null,
+            data.status || null,
+            data.sex || null,
+            data.type_of_student || null,
+            data.parent_status || null,
+            data.is_pwd || false,
+            data.is_senior_citizen || false,
+            data.is_indigenous_people || false,
+            data.is_displaced_worker || false,
+            data.is_ofw_descendant || false,
+            data.father_name || null,
+            data.father_occupation || null,
+            data.father_contact || null,
+            data.mother_maiden_name || null,
+            data.mother_occupation || null,
+            data.mother_contact || null,
+            data.education_level || null,
+            data.name_of_school || null,
+            data.degree_earned_course || null,
+            data.year_level_grade || null,
+            data.date_of_attendance || null,
+            data.present_address || null,
+            data.permanent_address || null,
+            detailId
+        ];
+
+        const [result] = await db.execute(query, values);
+        return { success: true, affectedRows: result.affectedRows };
+    } catch (error) {
+        console.error('Error updating SPES details:', error.message);
+        throw error;
+    }
+};
+
+// Approve a SPES application in centralized applications table.
+exports.approveApplication = async (applicationId) => {
     const query = `
-        UPDATE spes_applications
-        SET application_status = 'Rejected', rejection_reason = ?, updated_at = NOW()
-        WHERE id = ?
+        UPDATE applications
+        SET status = 'Approved', approval_date = NOW(), rejection_reason = NULL, updated_at = NOW()
+        WHERE application_id = ? AND program_type = 'SPES'
     `;
-    return await db.execute(query, [reason, id]);
+
+    const [result] = await db.execute(query, [applicationId]);
+    return { success: true, affectedRows: result.affectedRows };
+};
+
+// Reject a SPES application in centralized applications table.
+exports.rejectApplication = async (applicationId, reason) => {
+    const query = `
+        UPDATE applications
+        SET status = 'Rejected', rejection_reason = ?, updated_at = NOW()
+        WHERE application_id = ? AND program_type = 'SPES'
+    `;
+
+    const [result] = await db.execute(query, [reason || null, applicationId]);
+    return { success: true, affectedRows: result.affectedRows };
 };

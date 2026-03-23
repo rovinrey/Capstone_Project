@@ -43,7 +43,7 @@ const signup = async (body) => {
         );
         return { message: "Account created successfully!" };
     } catch (error) {
-        console.error("❌ SIGNUP ERROR:", error.message);
+        console.error("SIGNUP ERROR:", error.message);
         throw error;
     }   
 };
@@ -73,9 +73,16 @@ const login = async (body) => {
         const isPasswordValid = await bcrypt.compare(password, user.password);
         
         if (isPasswordValid) {
+            // THE FIX: Safely grab the ID regardless of whether the DB column is 'id' or 'user_id'
+            const user_id = user.user_id || user.id;
+
+            if (!user_id) {
+                 console.error("CRITICAL: Database did not return an ID column. Check your users table schema.");
+            }
+
             // Generate JWT token
             const token = jwt.sign(
-                { id: user.id, user_name: user.user_name, role: user.role },
+                { id: user_id, user_name: user.user_name, role: user.role },
                 process.env.JWT_SECRET || 'your-secret-key',
                 { expiresIn: '24h' }
             );
@@ -85,7 +92,7 @@ const login = async (body) => {
                 token,
                 role: user.role,
                 user: { 
-                    id: user.id, 
+                    id: user_id, // Send the safely captured ID
                     user_name: user.user_name,
                     email: user.email,
                     phone: user.phone
@@ -99,7 +106,6 @@ const login = async (body) => {
         throw error;
     }
 };
-
 // get the usetname of the user who logged in
 const getProfile = async (body) => {
     // Accept user_name directly (from query string)

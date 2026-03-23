@@ -32,16 +32,18 @@ function BeneficiaryPayment() {
     }, [navigate]);
 
     return (
-        <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Payment</h1>
-            <p>Welcome to the Payment page. Here you can view your payment information.</p>
-            {user && (
-                <div className="mt-4">
-                    <p>User: {user.user_name}</p>
-                </div>
-            )}
-            {error && <p className="text-red-500">{error}</p>}
-        </div>
+        <section className="w-full max-w-4xl mx-auto">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+                <h1 className="text-xl sm:text-2xl font-bold mb-2 text-gray-900">Payment</h1>
+                <p className="text-sm sm:text-base text-gray-600">Welcome to the Payment page. Here you can view your payment information.</p>
+                {user && (
+                    <div className="mt-5 rounded-lg bg-gray-50 border border-gray-200 p-4">
+                        <p className="text-sm text-gray-700">User: <span className="font-semibold">{user.user_name}</span></p>
+                    </div>
+                )}
+                {error && <p className="text-red-500 mt-4 text-sm">{error}</p>}
+            </div>
+        </section>
     );
 }
 

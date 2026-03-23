@@ -18,10 +18,10 @@ interface BeneficiarySidebarProps {
 function BeneficiarySidebar({ isOpen, setIsOpen }: BeneficiarySidebarProps) {
     // menus for beneficiary
     const menuItems = [
-        { name: "Dashboard", path: "/beneficiary", icon: <LayoutDashboard size={18} /> },
-        { name: "Application", path: "/beneficiary/application", icon: <FileText size={18} /> },
-        { name: "Attendance", path: "/beneficiary/attendance", icon: <Clock size={18} /> },
-        { name: "Payment", path: "/beneficiary/payment", icon: <CreditCard size={18} /> },
+        { name: "Dashboard", path: "/beneficiary", icon: <LayoutDashboard size={18} />, exact: true },
+        { name: "Application", path: "/beneficiary/application", icon: <FileText size={18} />, exact: true },
+        { name: "Attendance", path: "/beneficiary/attendance", icon: <Clock size={18} />, exact: true },
+        { name: "Payment", path: "/beneficiary/payment", icon: <CreditCard size={18} />, exact: true },
     ];
 
     const navigate = useNavigate();
@@ -43,11 +43,11 @@ function BeneficiarySidebar({ isOpen, setIsOpen }: BeneficiarySidebarProps) {
     return (
         <aside className={`${
             isOpen
-                ? 'fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col z-50 lg:relative lg:w-64 lg:min-h-screen lg:sticky lg:top-0 transition-all duration-300'
+                ? 'fixed inset-y-0 left-0 w-[82vw] max-w-xs bg-white border-r border-gray-200 flex flex-col z-50 lg:relative lg:w-64 lg:min-h-screen lg:sticky lg:top-0 transition-all duration-300'
                 : 'hidden lg:flex lg:flex-col lg:relative lg:w-16 lg:min-h-screen lg:bg-white lg:border-r lg:border-gray-200 lg:sticky lg:top-0 transition-all duration-300'
         }`}>
             {/* Logo Section */}
-            <div className="p-8 border-b border-gray-100 relative">
+            <div className="p-5 lg:p-8 border-b border-gray-100 relative">
                 <h2 className={`text-2xl font-black tracking-tighter text-blue-600 leading-tight ${!isOpen && 'text-center'}`}>
                     DOLE {isOpen && <span className="text-gray-800 font-light text-lg block">tupad & pangkabuhayan</span>}
                 </h2>
@@ -60,11 +60,12 @@ function BeneficiarySidebar({ isOpen, setIsOpen }: BeneficiarySidebarProps) {
             </div>
 
             {/* Navigation Links */}
-            <nav className="flex-1 mt-6 px-4 space-y-2">
+            <nav className="flex-1 mt-4 lg:mt-6 px-3 lg:px-4 space-y-2 overflow-y-auto">
                 {menuItems.map((item) => (
                     <NavLink
                         key={item.name}
                         to={item.path}
+                        end={item.exact}
                         onClick={() => { if (window.innerWidth < 1024) setIsOpen(false); }}
                         className={({ isActive }) => `
                             flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
@@ -88,7 +89,7 @@ function BeneficiarySidebar({ isOpen, setIsOpen }: BeneficiarySidebarProps) {
             </nav>
 
             {/* Bottom Section */}
-            <div className="p-4 border-t border-gray-100">
+            <div className="p-3 lg:p-4 border-t border-gray-100">
                 <button
                     onClick={logout}
                     className="w-full flex items-center gap-4 px-4 py-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl font-bold text-xs uppercase tracking-widest transition-all"

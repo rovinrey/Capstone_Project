@@ -20,7 +20,7 @@ exports.createProgram = async (req, res) => {
             message: "Program created successfully!", 
             id: result.insertId,
             program: {
-                id: result.insertId,
+                program_id: result.insertId,
                 name,
                 location,
                 slots,
@@ -39,7 +39,7 @@ exports.createProgram = async (req, res) => {
 // Get all programs
 exports.getAllPrograms = async (req, res) => {
     try {
-        const query = 'SELECT * FROM programs ORDER BY id DESC';
+        const query = 'SELECT * FROM programs ORDER BY program_id DESC';
         const [programs] = await db.execute(query);
         res.status(200).json(programs);
     } catch (error) {
@@ -51,9 +51,9 @@ exports.getAllPrograms = async (req, res) => {
 // Get a single program
 exports.getProgram = async (req, res) => {
     try {
-        const { id } = req.params;
-        const query = 'SELECT * FROM programs WHERE id = ?';
-        const [program] = await db.execute(query, [id]);
+        const { program_id } = req.params;
+        const query = 'SELECT * FROM programs WHERE program_id = ?';
+        const [program] = await db.execute(query, [program_id]);
         
         if (program.length === 0) {
             return res.status(404).json({ message: "Program not found" });
@@ -69,16 +69,16 @@ exports.getProgram = async (req, res) => {
 // Update a program
 exports.updateProgram = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { program_id } = req.params;
         const { name, location, slots, budget, status } = req.body;
 
         const query = `
             UPDATE programs 
             SET program_name = ?, location = ?, slots = ?, budget = ?, status = ?
-            WHERE id = ?
+            WHERE program_id = ?
         `;
 
-        const [result] = await db.execute(query, [name, location, slots, budget, status, id]);
+        const [result] = await db.execute(query, [name, location, slots, budget, status, program_id]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: "Program not found" });
@@ -94,10 +94,10 @@ exports.updateProgram = async (req, res) => {
 // Delete a program
 exports.deleteProgram = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { program_id } = req.params;
         
-        const query = 'DELETE FROM programs WHERE id = ?';
-        const [result] = await db.execute(query, [id]);
+        const query = 'DELETE FROM programs WHERE program_id = ?';
+        const [result] = await db.execute(query, [program_id]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: "Program not found" });

@@ -1,108 +1,70 @@
-// tupad.services.js
+// services/tupadService.js
 const db = require('../config/db');
+const tupadModel = require('../models/tupad.models');
 
-// 1. Apply to TUPAD
-exports.applyToTupad = async (data) => {
-    const query = `
-        INSERT INTO tupad_applications (
-            first_name, middle_name, last_name, date_of_birth, age, 
-            gender, civil_status, contact_number, occupation, 
-            monthly_income, valid_id_type, id_number, 
-            name_of_beneficiary, program_type
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+exports.applyTupad = async (data) => {
+    const userId = data.user_id || data.userId;
+    if (!userId) {
+        throw new Error('User ID is required for TUPAD application');
+    }
 
-    // Careful with timezone shifts here. If it's already 'YYYY-MM-DD', just pass it directly!
-    const formattedBirthday = data.date_of_birth 
-        ? new Date(data.date_of_birth).toISOString().split('T')[0] 
-        : null;
+    const connection = await db.getConnection();
 
-    const values = [
-        data.first_name || '',        
-        data.middle_name || null, 
-        data.last_name || '',         
-        formattedBirthday,            
-        data.age || null,
-        data.gender || null,
-        data.civil_status || null,
-        data.contact_number || null,
-        data.occupation || null,
-        data.monthly_income || 0,
-        data.valid_id_type || null,
-        data.id_number || null,
-        data.name_of_beneficiary || null,
-        'TUPAD'                      
-    ];
-
-    return await db.execute(query, values);
-};
-// 2. Approve Application
-exports.approveTupadApplication = async (id) => {
-    const connection = await db.getConnection(); 
-    
     try {
         await connection.beginTransaction();
 
-        const [rows] = await connection.execute(
-            'SELECT * FROM tupad_applications WHERE id = ?', 
-            [id]
-        );
+        // Prevent duplicate application
+        const exists = await tupadModel.checkDuplicateApplication(userId);
+        if (exists) {
+            throw new Error('You already applied for TUPAD');
+        }
 
-        if (rows.length === 0) throw new Error('Application not found');
-        const app = rows[0];
+        // Create central application
+        const applicationId = await tupadModel.createApplication(connection, userId);
 
-        // Handle missing address and extension_name gracefully
-        const insertQuery = `
-            INSERT INTO beneficiaries (
-                id, first_name, middle_name, last_name, extension_name,
-                gender, civil_status, address, contact_number, 
-                program_type, approval_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `;
+        // Save program-specific details
+        await tupadModel.createTupadDetails(connection, {
+            application_id: applicationId,
+            valid_id_type: data.valid_id_type,
+            id_number: data.id_number,
+            occupation: data.occupation,
+            monthly_income: data.monthly_income,
+            civil_status: data.civil_status,
+            work_category: data.occupation,
+            job_preference: data.job_preference,
+            educational_attainment: data.Educational_attainment || data.educational_attainment
+        });
 
-        const insertValues = [
-            app.id,
-            app.first_name,
-            app.middle_name,
-            app.last_name,
-            app.extension_name || null,
-            app.gender,
-            app.civil_status,
-            app.address || app.barangay || app.city || app.province || 'N/A',
-            app.contact_number,
-            app.program_type || 'TUPAD'
-        ];
-
-        await connection.execute(insertQuery, insertValues);
-
-        // Update application status
-        const updateQuery = `
-            UPDATE tupad_applications
-            SET status = 'Approved', updated_at = NOW()
-            WHERE id = ?
-        `;
-        await connection.execute(updateQuery, [id]);
+        // Save beneficiary profile
+        await tupadModel.createBeneficiary(connection, {
+            user_id: userId,
+            first_name: data.first_name,
+            middle_name: data.middle_name || '',
+            last_name: data.last_name,
+            birth_date: data.date_of_birth,
+            gender: data.gender,
+            contact_number: data.contact_number
+        });
 
         await connection.commit();
+
+        return { application_id: applicationId };
     } catch (error) {
-        if (connection) await connection.rollback();
-        console.error("Database Error Detail:", error.message);
-        throw error; 
+        await connection.rollback();
+        throw error;
     } finally {
-        if (connection) connection.release();
+        connection.release();
     }
 };
-// 3. Reject Application
-// FIXED: Removed trailing comma, added 'reason' parameter
-exports.rejectApplication = async (id, reason = null) => {
-    // If you have a remarks/reason column, you can add it here.
-    const query = `
-        UPDATE tupad_applications
-        SET status = 'Rejected', updated_at = NOW()
-        -- You could add: , remarks = ? here if you track reasons
-        WHERE id = ?
-    `;
-    
-    // If you add remarks to the query, remember to add 'reason' to this array
-    return await db.execute(query, [id]); 
+
+exports.approveTupadApplication = async (applicationId) => {
+    const [result] = await db.query(
+        `UPDATE applications SET status = 'Approved', approval_date = NOW() WHERE application_id = ?`,
+        [applicationId]
+    );
+
+    if (result.affectedRows === 0) {
+        throw new Error('Application not found');
+    }
+    return result;
 };
