@@ -6,7 +6,9 @@ export const dilpAPI = {
   // Submit DILP application
   submitDilpApplication: async (data: any) => {
     try {
-      const response = await axios.post(`${API_URL}/apply/dilp`, data);
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await axios.post(`${API_URL}/apply/dilp`, data, { headers });
       return response.data;
     } catch (error) {
       console.error('Error submitting DILP application:', error);

@@ -50,7 +50,8 @@ const signup = async (body) => {
 
 // --- LOGIN FUNCTION ---
 const login = async (body) => {
-    const identifier = body.identifier || body.email || null;
+    const rawIdentifier = body.identifier || body.email || body.phone || body.user_name || null;
+    const identifier = rawIdentifier ? String(rawIdentifier).trim() : null;
     const password = body.password || null;
 
     if (!identifier || !password) {
@@ -58,9 +59,14 @@ const login = async (body) => {
     }
 
     try {
+        const identifierDigits = identifier.replace(/\D/g, '');
         const [users] = await db.execute(
-            'SELECT * FROM users WHERE email = ? OR phone = ?',
-            [identifier, identifier]
+            `SELECT *
+             FROM users
+             WHERE email = ?
+                OR phone = ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?`,
+            [identifier, identifier, identifierDigits]
         );
 
         if (users.length === 0) {

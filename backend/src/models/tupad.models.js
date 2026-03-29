@@ -48,10 +48,10 @@ exports.createBeneficiary = async (connection, data) => {
     );
 };
 
-exports.checkDuplicateApplication = async (userId) => {
+exports.hasPendingApplication = async (userId) => {
     const [rows] = await db.query(
         `SELECT * FROM applications 
-         WHERE user_id = ? AND program_type = 'TUPAD'`,
+         WHERE user_id = ? AND program_type = 'TUPAD' AND status = 'Pending'`,
         [userId]
     );
     return rows.length > 0;

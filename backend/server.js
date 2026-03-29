@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 // --- ROUTES ---
 
 const programRoutes = require('./src/routes/program.routes.js');
@@ -32,6 +33,10 @@ app.use('/api/programs', programRoutes);
 app.use('/api/beneficiaries', beneficiaryRoutes);
 app.use('/api/applications', applicationsRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/spes-documents', require('./src/routes/spes.documents.routes.js'));
+
+// Serve uploaded files (documents) as static assets
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const PORT = 5000;
 app.listen(PORT, () => {

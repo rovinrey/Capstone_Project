@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { CheckCircle, XCircle, Loader } from "lucide-react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 interface Application {
     id: number;
@@ -15,33 +16,121 @@ interface Application {
 }
 
 const ApplicationApproval = () => {
+    const navigate = useNavigate();
+    const token = localStorage.getItem('token');
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
     const [applications, setApplications] = useState<Application[]>([]);
     const [loading, setLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [processingId, setProcessingId] = useState<number | null>(null);
     const [selectedFilter, setSelectedFilter] = useState("Pending");
+    const [selectedProgram, setSelectedProgram] = useState("all");
+
+    const programOptions = [
+        { label: "All", value: "all" },
+        { label: "TUPAD", value: "tupad" },
+        { label: "SPES", value: "spes" },
+        { label: "DILP", value: "dilp" },
+        { label: "GIP", value: "gip" },
+        { label: "Jobseeker", value: "jobseeker" },
+    ];
 
     // Fetch applications on component mount
     useEffect(() => {
         fetchApplications();
-    }, [selectedFilter]);
+    }, [selectedFilter, selectedProgram]);
 
     const role = localStorage.getItem('role');
+
+    const handleUnauthorized = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('user_name');
+        localStorage.removeItem('user_id');
+        navigate('/login');
+    };
 
     const fetchApplications = async () => {
         setLoading(true);
         try {
             const endpoint =
                 selectedFilter === "Pending"
-                    ? "http://localhost:5000/api/forms/applications/pending"
-                    : `http://localhost:5000/api/forms/applications?status=${selectedFilter}`;
+                    ? `${API_BASE_URL}/api/forms/applications/pending`
+                    : `${API_BASE_URL}/api/forms/applications`;
 
-            const response = await axios.get(endpoint);
+            const params: Record<string, string> = {};
+            if (selectedFilter !== "Pending") {
+                params.status = selectedFilter;
+            }
+            if (selectedProgram !== "all") {
+                params.programType = selectedProgram;
+            }
+
+            const response = await axios.get(endpoint, {
+                headers: authHeaders,
+                params,
+            });
             setApplications(response.data);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching applications:", error);
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                handleUnauthorized();
+                return;
+            }
             alert("Failed to fetch applications");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExport = async () => {
+        if (!['Pending', 'Approved'].includes(selectedFilter)) {
+            alert('Export is only available for Pending and Approved applications.');
+            return;
+        }
+
+        setExporting(true);
+        try {
+            const params: Record<string, string> = {
+                status: selectedFilter,
+            };
+
+            if (selectedProgram !== 'all') {
+                params.programType = selectedProgram;
+            }
+
+            const response = await axios.get(`${API_BASE_URL}/api/forms/export`, {
+                headers: authHeaders,
+                params,
+                responseType: 'blob',
+            });
+
+            const blob = new Blob([response.data], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+
+            const statusSlug = selectedFilter.toLowerCase();
+            const programSlug = selectedProgram;
+            const fileName = `applications_${statusSlug}_${programSlug}.xlsx`;
+
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = downloadUrl;
+            anchor.download = fileName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error: any) {
+            console.error('Error exporting applications:', error);
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                handleUnauthorized();
+                return;
+            }
+            alert('Failed to export applications');
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -49,7 +138,9 @@ const ApplicationApproval = () => {
         setProcessingId(applicationId);
         try {
             const response = await axios.put(
-                `http://localhost:5000/api/forms/applications/${applicationId}/approve`
+                `${API_BASE_URL}/api/forms/applications/${applicationId}/approve`,
+                {},
+                { headers: authHeaders }
             );
             
             if (response.status === 200) {
@@ -60,8 +151,12 @@ const ApplicationApproval = () => {
                 // Refresh list
                 fetchApplications();
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error approving application:", error);
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                handleUnauthorized();
+                return;
+            }
             alert("Failed to approve application");
         } finally {
             setProcessingId(null);
@@ -74,8 +169,9 @@ const ApplicationApproval = () => {
         
         try {
             const response = await axios.put(
-                `http://localhost:5000/api/forms/applications/${applicationId}/reject`,
-                { reason: reason || null }
+                `${API_BASE_URL}/api/forms/applications/${applicationId}/reject`,
+                { reason: reason || null },
+                { headers: authHeaders }
             );
             
             if (response.status === 200) {
@@ -83,12 +179,20 @@ const ApplicationApproval = () => {
                 alert("Application rejected successfully");
                 fetchApplications();
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error rejecting application:", error);
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                handleUnauthorized();
+                return;
+            }
             alert("Failed to reject application");
         } finally {
             setProcessingId(null);
         }
+    };
+
+    const handleOpenApplicationDetails = (applicationId: number) => {
+        navigate(`/applications/${applicationId}`);
     };
 
     return (
@@ -97,6 +201,33 @@ const ApplicationApproval = () => {
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Application Reviews</h1>
                 <p className="text-gray-500 text-sm">Review and approve beneficiary applications</p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                        Program Filter
+                    </label>
+                    <select
+                        value={selectedProgram}
+                        onChange={(event) => setSelectedProgram(event.target.value)}
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-blue-500"
+                    >
+                        {programOptions.map((program) => (
+                            <option key={program.value} value={program.value}>
+                                {program.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <button
+                    onClick={handleExport}
+                    disabled={exporting}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    {exporting ? 'Exporting...' : `Export ${selectedFilter} to Excel`}
+                </button>
             </div>
 
             {/* Filter Tabs */}
@@ -154,7 +285,15 @@ const ApplicationApproval = () => {
                                 {applications.map((app) => (
                                     <tr
                                         key={app.id}
-                                        className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                                        onClick={() => handleOpenApplicationDetails(app.id)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                handleOpenApplicationDetails(app.id);
+                                            }
+                                        }}
+                                        tabIndex={0}
+                                        className="cursor-pointer border-b border-gray-200 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
                                     >
                                         <td className="px-6 py-4 text-sm text-gray-900 font-medium">
                                             {app.first_name} {app.middle_name} {app.last_name}
@@ -186,7 +325,10 @@ const ApplicationApproval = () => {
                                                 {app.status === "Pending" && role === 'admin' && (
                                                     <>
                                                         <button
-                                                            onClick={() => handleApprove(app.id)}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                handleApprove(app.id);
+                                                            }}
                                                             disabled={processingId === app.id}
                                                             className="text-green-600 hover:text-green-700 hover:bg-green-50 p-2 rounded-lg transition-colors disabled:opacity-50"
                                                             title="Approve"
@@ -198,7 +340,10 @@ const ApplicationApproval = () => {
                                                             )}
                                                         </button>
                                                         <button
-                                                            onClick={() => handleReject(app.id)}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                handleReject(app.id);
+                                                            }}
                                                             disabled={processingId === app.id}
                                                             className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors disabled:opacity-50"
                                                             title="Reject"

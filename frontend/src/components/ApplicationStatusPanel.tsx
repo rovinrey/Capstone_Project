@@ -3,11 +3,9 @@ import { CheckCircle2, Clock3, FileText, XCircle } from 'lucide-react';
 import type { ApplicationSubmission } from '../api/applicationStatus.api';
 
 interface ApplicationStatusPanelProps {
-  summary: Record<string, string | null>;
   submissions: ApplicationSubmission[];
 }
 
-const PROGRAM_ORDER = ['TUPAD', 'SPES', 'DILP', 'GIP', 'Jobseeker'];
 
 const getStatusStyles = (status: string | null) => {
   if (status === 'Approved') {
@@ -49,36 +47,15 @@ const formatDate = (date: string) => {
   });
 };
 
-const ApplicationStatusPanel: React.FC<ApplicationStatusPanelProps> = ({ summary, submissions }) => {
+const ApplicationStatusPanel: React.FC<ApplicationStatusPanelProps> = ({  submissions }) => {
   return (
     <section className="space-y-6">
       <div className="rounded-2xl p-4 sm:p-6 bg-[linear-gradient(135deg,#eff6ff,#f8fafc)] border border-blue-100">
         <h2 className="text-xl font-black text-slate-900">Your Application Status</h2>
-        <p className="text-slate-600 text-sm mt-1">Track every submitted form in one place.</p>
 
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {PROGRAM_ORDER.map((program) => {
-            const status = summary?.[program] || null;
-            const style = getStatusStyles(status);
-
-            return (
-              <article
-                key={program}
-                className={`rounded-xl border border-white/70 bg-white p-3 shadow-sm ring-1 ${style.ring}`}
-              >
-                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">{program}</p>
-                <div className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${style.badge}`}>
-                  {style.icon}
-                  {status || 'Not Submitted'}
-                </div>
-              </article>
-            );
-          })}
-        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-        <h3 className="text-lg font-bold text-slate-900">Submission Timeline</h3>
 
         {submissions.length === 0 ? (
           <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">

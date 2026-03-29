@@ -13,10 +13,10 @@ exports.applyTupad = async (data) => {
     try {
         await connection.beginTransaction();
 
-        // Prevent duplicate application
-        const exists = await tupadModel.checkDuplicateApplication(userId);
-        if (exists) {
-            throw new Error('You already applied for TUPAD');
+        // Prevent multiple active submissions while still allowing reapply after cooldown.
+        const hasPendingApplication = await tupadModel.hasPendingApplication(userId);
+        if (hasPendingApplication) {
+            throw new Error('You already have a pending TUPAD application');
         }
 
         // Create central application

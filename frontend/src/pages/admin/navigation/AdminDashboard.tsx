@@ -19,6 +19,8 @@ interface Application {
 
 function AdminDashboard() {
     const navigate = useNavigate();
+    const token = localStorage.getItem("token");
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     // cards
     const [stats, setStats] = useState({
@@ -53,8 +55,10 @@ function AdminDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get("http://localhost:5000/api/forms/recent?limit=10");
-            setRecentApps(response.data);
+            const response = await axios.get("http://localhost:5000/api/forms/recent?limit=10", {
+                headers: authHeaders,
+            });
+            setRecentApps(response.data || []);
         } catch (err: any) {
             console.error("Error fetching recent applications:", err);
             setError(err.message);
@@ -93,7 +97,11 @@ function AdminDashboard() {
     const handleApprove = async (id: number) => {
         setProcessingId(id);
         try {
-            const res = await axios.put(`http://localhost:5000/api/forms/applications/${id}/approve`);
+            const res = await axios.put(
+                `http://localhost:5000/api/forms/applications/${id}/approve`,
+                {},
+                { headers: authHeaders }
+            );
             if (res.status === 200) {
                 setRecentApps(recentApps.filter(app => app.id !== id));
                 alert("Application approved successfully");
@@ -111,7 +119,11 @@ function AdminDashboard() {
         const reason = prompt("Rejection reason (optional):");
         setProcessingId(id);
         try {
-            const res = await axios.put(`http://localhost:5000/api/forms/applications/${id}/reject`, { reason: reason || null });
+            const res = await axios.put(
+                `http://localhost:5000/api/forms/applications/${id}/reject`,
+                { reason: reason || null },
+                { headers: authHeaders }
+            );
             if (res.status === 200) {
                 setRecentApps(recentApps.filter(app => app.id !== id));
                 alert("Application rejected");
@@ -124,6 +136,11 @@ function AdminDashboard() {
             setProcessingId(null);
         }
     };
+
+    const handleOpenApplicationDetails = (applicationId: number) => {
+        navigate(`/applications/${applicationId}`);
+    };
+
     return (
         <>
             {/* Header section */}
@@ -142,7 +159,7 @@ function AdminDashboard() {
 
             {/* Recent Applications Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-6 border-b border_gray-100 flex justify-between items-center">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-gray-800">Recent Applications</h2>
                     <button
                         onClick={() => navigate('/applications')}
@@ -181,7 +198,18 @@ function AdminDashboard() {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {recentApps.map((app, idx) => (
-                                    <tr key={app.id || idx} className="hover:bg-gray-50 transition-colors">
+                                    <tr
+                                        key={app.id || idx}
+                                        onClick={() => app.id && handleOpenApplicationDetails(app.id)}
+                                        onKeyDown={(event) => {
+                                            if ((event.key === 'Enter' || event.key === ' ') && app.id) {
+                                                event.preventDefault();
+                                                handleOpenApplicationDetails(app.id);
+                                            }
+                                        }}
+                                        tabIndex={app.id ? 0 : -1}
+                                        className="cursor-pointer hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                                    >
                                         <td className="px-6 py-4 text-sm text-gray-700">{app.user_id ?? 'N/A'}</td>
                                         <td className="px-6 py-4 font-medium text-gray-900">
                                             {app.first_name} {app.middle_name ? app.middle_name + ' ' : ''}{app.last_name}
@@ -209,7 +237,10 @@ function AdminDashboard() {
                                             {app.status === 'Pending' && app.id ? (
                                                 <div className="flex justify-center gap-2">
                                                     <button
-                                                        onClick={() => handleApprove(app.id)}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            handleApprove(app.id);
+                                                        }}
                                                         disabled={processingId === app.id}
                                                         className="text-green-600 hover:text-green-700 hover:bg-green-50 p-2 rounded-lg transition-colors disabled:opacity-50"
                                                         title="Approve"
@@ -221,7 +252,10 @@ function AdminDashboard() {
                                                         )}
                                                     </button>
                                                     <button
-                                                        onClick={() => handleReject(app.id)}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            handleReject(app.id);
+                                                        }}
                                                         disabled={processingId === app.id}
                                                         className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors disabled:opacity-50"
                                                         title="Reject"

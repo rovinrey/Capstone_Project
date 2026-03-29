@@ -3,11 +3,26 @@ import axios from "axios";
 
 interface AttendanceRecord {
     id: number;
-    programId: string;
+    userId: number;
+    beneficiaryName: string;
+    programType: string;
     date: string;
-    timeIn: string;
-    timeOut: string;
+    timeIn: string | null;
+    timeOut: string | null;
+    status: string;
     description: string;
+}
+
+interface MonitoringApiRecord {
+    attendance_id: number;
+    user_id: number;
+    beneficiary_name: string | null;
+    program_type: string | null;
+    attendance_date: string;
+    time_in: string | null;
+    time_out: string | null;
+    status: string;
+    remarks: string | null;
 }
 
 const AttendanceMonitoringTable = () => {
@@ -15,14 +30,8 @@ const AttendanceMonitoringTable = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Mock data for demonstration - replace with actual API call
-    const mockData: AttendanceRecord[] = [
-        { id: 1, programId: "TUPAD-001", date: "2024-03-13", timeIn: "08:00", timeOut: "17:00", description: "Regular attendance" },
-        { id: 2, programId: "SPES-002", date: "2024-03-13", timeIn: "09:00", timeOut: "16:00", description: "Late arrival" },
-        { id: 3, programId: "DILP-003", date: "2024-03-12", timeIn: "08:30", timeOut: "17:30", description: "Overtime work" },
-        { id: 4, programId: "TUPAD-001", date: "2024-03-12", timeIn: "08:00", timeOut: "12:00", description: "Half day" },
-        { id: 5, programId: "SPES-002", date: "2024-03-11", timeIn: "08:15", timeOut: "17:15", description: "On time" },
-    ];
+    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const token = localStorage.getItem("token");
 
     useEffect(() => {
         fetchAttendanceRecords();
@@ -33,20 +42,46 @@ const AttendanceMonitoringTable = () => {
         setError(null);
 
         try {
-            // Replace with actual API endpoint when available
-            // const response = await axios.get("http://localhost:5000/api/attendance");
-            // setAttendanceRecords(response.data);
+            const response = await axios.get<MonitoringApiRecord[]>(
+                `${API_BASE_URL}/api/attendance/monitoring?limit=200`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
-            // Using mock data for now
-            setTimeout(() => {
-                setAttendanceRecords(mockData);
-                setLoading(false);
-            }, 1000);
-        } catch (err) {
+            const mapped = (response.data || []).map((record) => ({
+                id: record.attendance_id,
+                userId: record.user_id,
+                beneficiaryName: record.beneficiary_name || `User #${record.user_id}`,
+                programType: record.program_type || "N/A",
+                date: record.attendance_date,
+                timeIn: record.time_in,
+                timeOut: record.time_out,
+                status: record.status || "Incomplete",
+                description: record.remarks || "-"
+            }));
+
+            setAttendanceRecords(mapped);
+        } catch (err: any) {
             console.error(err);
-            setError("Failed to load attendance records. Please try again.");
+            setError(err?.response?.data?.message || "Failed to load attendance records. Please try again.");
+        } finally {
             setLoading(false);
         }
+    };
+
+    const formatDate = (value: string) => {
+        return new Date(value).toLocaleDateString('en-PH', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    };
+
+    const formatTime = (value: string | null) => {
+        if (!value) return '—';
+        return new Date(value).toLocaleTimeString('en-PH', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     if (loading) {
@@ -86,10 +121,13 @@ const AttendanceMonitoringTable = () => {
                     <thead className="bg-gray-50">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                ID
+                                User ID
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Program ID
+                                Beneficiary
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Program
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Date
@@ -101,6 +139,9 @@ const AttendanceMonitoringTable = () => {
                                 Time Out
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Description
                             </th>
                         </tr>
@@ -109,19 +150,25 @@ const AttendanceMonitoringTable = () => {
                         {attendanceRecords.map((record) => (
                             <tr key={record.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {record.id}
+                                    {record.userId}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {record.programId}
+                                    {record.beneficiaryName}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {record.date}
+                                    {record.programType}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {record.timeIn}
+                                    {formatDate(record.date)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {record.timeOut}
+                                    {formatTime(record.timeIn)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {formatTime(record.timeOut)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {record.status}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {record.description}

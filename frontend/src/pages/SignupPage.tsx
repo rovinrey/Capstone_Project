@@ -91,7 +91,7 @@ function SignupPage() {
 
                     {/* Password */}
                     <input
-                        type="password"
+                        type="text"
                         name="password"
                         placeholder="Password"
                         value={formData.password}

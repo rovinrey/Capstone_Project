@@ -63,3 +63,14 @@ exports.timeOut = async (req, res) => {
     res.status(statusCode).json({ message: error.message || 'Time out failed.' });
   }
 };
+
+exports.getMonitoringRecords = async (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 200);
+    const records = await attendanceService.getMonitoringRecords(limit);
+    res.status(200).json(records);
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({ message: error.message || 'Failed to fetch attendance monitoring records.' });
+  }
+};

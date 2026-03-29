@@ -1,122 +1,322 @@
-import { useState } from "react";
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Download, 
-  Filter, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  PieChart,
-  Calendar
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { Calendar, FileSpreadsheet, Printer, Users, UserCheck, CircleAlert } from "lucide-react";
+
+type ApplicantSummary = {
+    male: number;
+    female: number;
+    total: number;
+};
+
+type BeneficiaryProfileRow = {
+    application_id: number;
+    user_id: number;
+    full_name: string;
+    address: string;
+    birth_date: string | null;
+    gender: string | null;
+};
+
+type PayrollRow = {
+    user_id: number;
+    full_name: string;
+    days_worked: number;
+    daily_wage: number;
+    total_payout: number;
+};
+
+type ReportResponse = {
+    period: {
+        month: string;
+        startDate: string;
+        endDate: string;
+    };
+    sprs: {
+        applicantsRegistered: ApplicantSummary;
+        placementsAssisted: number;
+    };
+    beneficiaryProfile: BeneficiaryProfileRow[];
+    attendancePayrollSummary: PayrollRow[];
+    totals: {
+        days_worked: number;
+        total_payout: number;
+    };
+    dailyWage: number;
+};
+
+const formatPeso = (amount: number) =>
+    new Intl.NumberFormat("en-PH", {
+        style: "currency",
+        currency: "PHP",
+        minimumFractionDigits: 2
+    }).format(amount || 0);
+
+const formatDate = (value: string | null) => {
+    if (!value) return "N/A";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "N/A";
+
+    return date.toLocaleDateString("en-PH", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit"
+    });
+};
+
+const toMonthInputDefault = () => new Date().toISOString().slice(0, 7);
+
+const buildCsv = (rows: (string | number)[][]) => {
+    return rows
+        .map((row) =>
+            row
+                .map((cell) => {
+                    const escaped = String(cell ?? "").replace(/"/g, '""');
+                    return `"${escaped}"`;
+                })
+                .join(",")
+        )
+        .join("\n");
+};
+
+const downloadCsv = (fileName: string, csvContent: string) => {
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+};
 
 const Reports = () => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const token = localStorage.getItem("token");
+
+    const [month, setMonth] = useState<string>(toMonthInputDefault());
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+    const [report, setReport] = useState<ReportResponse | null>(null);
+
+    const fetchReport = async (selectedMonth: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await axios.get<ReportResponse>(
+                `${API_BASE_URL}/api/forms/reports/tupad-monthly`,
+                {
+                    params: { month: selectedMonth },
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+                }
+            );
+            setReport(response.data);
+        } catch (err: any) {
+            console.error(err);
+            setError(err?.response?.data?.message || "Failed to load monthly report.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchReport(month);
+    }, [month]);
+
+    const reportLabel = useMemo(() => {
+        if (!report?.period?.month) return month;
+        const [year, monthPart] = report.period.month.split("-");
+        const date = new Date(Number(year), Number(monthPart) - 1, 1);
+        return date.toLocaleDateString("en-PH", { month: "long", year: "numeric" });
+    }, [report, month]);
+
+    const exportAnnexD = () => {
+        if (!report) return;
+        const rows: (string | number)[][] = [
+            ["TUPAD Beneficiary Profile (Annex D)", reportLabel],
+            [],
+            ["Full Name", "Address", "Birthdate", "Gender"]
+        ];
+
+        report.beneficiaryProfile.forEach((row) => {
+            rows.push([
+                row.full_name || "N/A",
+                row.address || "N/A",
+                formatDate(row.birth_date),
+                row.gender || "N/A"
+            ]);
+        });
+
+        downloadCsv(`annex_d_${report.period.month}.csv`, buildCsv(rows));
+    };
+
+    const printReport = () => {
+        window.print();
+    };
+
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Statistical Reports</h1>
-                    <p className="text-gray-500 text-sm">Real-time data visualization of program performance.</p>
-                </div>
-                <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold text-sm transition-all shadow-sm">
-                        <Calendar size={18} />
-                        Select Period
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold text-sm transition-all shadow-lg shadow-blue-100">
-                        <Download size={18} />
-                        Export PDF/Excel
-                    </button>
-                </div>
-            </div>
-
-            {/* Performance Overview Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <ReportCard title="Disbursement Rate" value="92.4%" trend="+4.2%" positive={true} description="of allocated 2026 budget" />
-                <ReportCard title="Active Programs" value="1" trend={undefined} positive={undefined} description="Number of active programs" />
-                <ReportCard title="Success Rate" value="88.1%" trend="+1.5%" positive={true} description="Beneficiaries completed programs" />
-                <ReportCard title="Avg. Payout Time" value="14 Days" trend="-2 Days" positive={true} description="from approval to release" />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Visual Chart Placeholder - Left 2/3 */}
-                <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-                    <div className="flex justify-between items-center mb-8">
-                        <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                            <BarChart3 size={18} className="text-blue-500" />
-                            Monthly Beneficiary Growth
-                        </h3>
-                        <select className="text-xs font-semibold bg-gray-50 border-none rounded-lg p-2 outline-none">
-                            <option>Last 6 Months</option>
-                            <option>Last Year</option>
-                        </select>
-                    </div>
-                    {/* Simulated Chart Area */}
-                    <div className="h-64 flex items-end justify-between gap-2 px-2">
-                        {[45, 60, 85, 70, 95, 110].map((height, i) => (
-                            <div key={i} className="w-full group relative">
-                                <div 
-                                    className="bg-blue-500 group-hover:bg-blue-600 rounded-t-lg transition-all duration-500 cursor-pointer" 
-                                    style={{ height: `${height}%` }}
-                                >
-                                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                        {height * 10} Beneficiaries
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-gray-400 mt-2 text-center font-bold">MON {i+1}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Program Split - Right 1/3 */}
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                        <PieChart size={18} className="text-purple-500" />
-                        Program Distribution
-                    </h3>
-                    <div className="space-y-4 mt-10">
-                        <DistributionItem label="TUPAD" value="65%" color="bg-blue-500" />
-                        <DistributionItem label="Pangkabuhayan" value="25%" color="bg-purple-500" />
-                        <DistributionItem label="SPES" value="10%" color="bg-orange-500" />
-                    </div>
-                    <div className="mt-8 pt-8 border-t border-gray-50">
-                        <p className="text-xs text-gray-400 leading-relaxed italic">
-                            * TUPAD remains the highest contributor to beneficiary engagement in the current quarter.
+        <div className="mx-auto w-full max-w-7xl space-y-6 print:space-y-4">
+            <section className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-slate-50 p-5 md:p-6 print:hidden">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="space-y-2">
+                        <p className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                            Monthly Compliance Report
+                        </p>
+                        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+                            PESO Juban TUPAD Reporting
+                        </h1>
+                        <p className="text-sm text-slate-600 md:text-base">
+                            Clean monthly view of SPRS, Annex D beneficiary profile, and attendance payroll summary for DOLE submission.
                         </p>
                     </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm">
+                            <Calendar size={16} className="text-slate-500" />
+                            <span className="text-slate-500">Period</span>
+                            <input
+                                type="month"
+                                value={month}
+                                onChange={(event) => setMonth(event.target.value)}
+                                className="bg-transparent font-semibold text-slate-800 outline-none"
+                            />
+                        </label>
+
+                        <button
+                            onClick={exportAnnexD}
+                            disabled={!report || loading}
+                            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <FileSpreadsheet size={16} />
+                            Annex D
+                        </button>
+
+                        <button
+                            onClick={printReport}
+                            disabled={!report || loading}
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <Printer size={16} />
+                            Print / PDF
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            {loading ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-8">
+                    <div className="mb-5 h-6 w-56 animate-pulse rounded bg-slate-200" />
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+                        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+                        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+                        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+                    </div>
+                    <p className="mt-5 text-sm text-slate-500">Loading report data...</p>
+                </div>
+            ) : error ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
+                    <div className="flex items-start gap-3">
+                        <CircleAlert size={18} className="mt-0.5" />
+                        <div>
+                            <p className="font-semibold">Unable to load report</p>
+                            <p className="text-sm">{error}</p>
+                        </div>
+                    </div>
+                </div>
+            ) : !report ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">No report data available.</div>
+            ) : (
+                <>
+                    <section className="rounded-2xl border border-slate-200 bg-white p-6">
+                        <div className="mb-5 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+                            <div>
+                                <h2 className="text-xl font-semibold text-slate-900">SPRS Summary</h2>
+                                <p className="text-sm text-slate-500">Reporting period: {reportLabel}</p>
+                            </div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Statistical Performance Reporting System</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <MetricCard icon={<Users size={16} />} tone="blue" label="Applicants Registered (Male)" value={report.sprs.applicantsRegistered.male} />
+                            <MetricCard icon={<Users size={16} />} tone="violet" label="Applicants Registered (Female)" value={report.sprs.applicantsRegistered.female} />
+                            <MetricCard icon={<Users size={16} />} tone="slate" label="Applicants Registered (Total)" value={report.sprs.applicantsRegistered.total} />
+                            <MetricCard icon={<UserCheck size={16} />} tone="emerald" label="Placements / Assisted" value={report.sprs.placementsAssisted} />
+                        </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-slate-200 bg-white p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-xl font-semibold text-slate-900">TUPAD Beneficiary Profile (Annex D)</h2>
+                                <p className="text-sm text-slate-500">Current approved batch for TUPAD.</p>
+                            </div>
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-700">
+                                {report.beneficiaryProfile.length} beneficiaries
+                            </span>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                            <table className="w-full min-w-[680px] text-sm">
+                                <thead className="border-b border-slate-200 bg-slate-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Name</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Address</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Birthdate</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {report.beneficiaryProfile.map((row) => (
+                                        <tr key={`${row.application_id}-${row.user_id}`} className="hover:bg-slate-50/70">
+                                            <td className="px-4 py-3 font-medium text-slate-800">{row.full_name || "N/A"}</td>
+                                            <td className="px-4 py-3 text-slate-700">{row.address || "N/A"}</td>
+                                            <td className="px-4 py-3 text-slate-700">{formatDate(row.birth_date)}</td>
+                                        </tr>
+                                    ))}
+                                    {report.beneficiaryProfile.length === 0 && (
+                                        <tr>
+                                            <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
+                                                No approved TUPAD beneficiaries for this period.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                </>
+            )}
         </div>
     );
 };
 
-// Helper Components
-const ReportCard = ({ title, value, trend, positive, description }) => (
-    <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
-        <p className="text-sm font-semibold text-gray-500 mb-1">{title}</p>
-        <div className="flex items-baseline gap-2">
-            <h2 className="text-3xl font-black text-gray-900">{value}</h2>
-            <span className={`flex items-center text-xs font-bold ${positive ? 'text-emerald-600' : 'text-red-600'}`}>
-                {positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                {trend}
-            </span>
-        </div>
-        <p className="text-[11px] text-gray-400 mt-2 uppercase tracking-wider font-bold">{description}</p>
-    </div>
-);
+type MetricCardProps = {
+    icon: React.ReactNode;
+    tone: "blue" | "violet" | "slate" | "emerald";
+    label: string;
+    value: number;
+};
 
-const DistributionItem = ({ label, value, color }) => (
-    <div className="space-y-1">
-        <div className="flex justify-between text-xs font-bold">
-            <span className="text-gray-600">{label}</span>
-            <span className="text-gray-900">{value}</span>
+const MetricCard = ({ icon, tone, label, value }: MetricCardProps) => {
+    const tones = {
+        blue: "border-blue-200 bg-blue-50 text-blue-700",
+        violet: "border-violet-200 bg-violet-50 text-violet-700",
+        slate: "border-slate-200 bg-slate-50 text-slate-700",
+        emerald: "border-emerald-200 bg-emerald-50 text-emerald-700"
+    };
+
+    return (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${tones[tone]}`}>
+                    {icon}
+                </span>
+            </div>
+            <p className="text-3xl font-semibold text-slate-900">{value}</p>
         </div>
-        <div className="h-2 w-full bg-gray-100 rounded-full">
-            <div className={`${color} h-full rounded-full`} style={{ width: value }} />
-        </div>
-    </div>
-);
+    );
+};
 
 export default Reports;

@@ -1,16 +1,82 @@
-import { useState } from "react";
-import { 
-  Smartphone, 
-  Banknote, 
-  CheckCircle2, 
-  Clock, 
-  Search, 
-  Download,
-  ArrowRight,
-  Plus
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import {
+    Banknote,
+    Calendar,
+    CheckCircle2,
+    CircleAlert,
+    Clock,
+    Download,
+    Plus,
+    Smartphone,
+    Wallet
 } from "lucide-react";
 
+type PayrollRow = {
+    user_id: number;
+    full_name: string;
+    days_worked: number;
+    daily_wage: number;
+    total_payout: number;
+};
+
+type ReportResponse = {
+    period: {
+        month: string;
+        startDate: string;
+        endDate: string;
+    };
+    attendancePayrollSummary: PayrollRow[];
+    totals: {
+        days_worked: number;
+        total_payout: number;
+    };
+    dailyWage: number;
+};
+
+const formatPeso = (amount: number) =>
+    new Intl.NumberFormat("en-PH", {
+        style: "currency",
+        currency: "PHP",
+        minimumFractionDigits: 2
+    }).format(amount || 0);
+
+const toMonthInputDefault = () => new Date().toISOString().slice(0, 7);
+
+const buildCsv = (rows: (string | number)[][]) => {
+    return rows
+        .map((row) =>
+            row
+                .map((cell) => {
+                    const escaped = String(cell ?? "").replace(/"/g, '""');
+                    return `"${escaped}"`;
+                })
+                .join(",")
+        )
+        .join("\n");
+};
+
+const downloadCsv = (fileName: string, csvContent: string) => {
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+};
+
 const PaymentPage = () => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const token = localStorage.getItem("token");
+
+    const [month, setMonth] = useState<string>(toMonthInputDefault());
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+    const [report, setReport] = useState<ReportResponse | null>(null);
+
     const [batches] = useState([
         { 
             id: "GC-2026-881", 
@@ -44,58 +110,226 @@ const PaymentPage = () => {
         },
     ]);
 
+    const fetchPayroll = async (selectedMonth: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await axios.get<ReportResponse>(
+                `${API_BASE_URL}/api/forms/reports/tupad-monthly`,
+                {
+                    params: { month: selectedMonth },
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+                }
+            );
+            setReport(response.data);
+        } catch (err: any) {
+            console.error(err);
+            setError(err?.response?.data?.message || "Failed to load payroll data.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPayroll(month);
+    }, [month]);
+
+    const reportLabel = useMemo(() => {
+        if (!report?.period?.month) return month;
+        const [year, monthPart] = report.period.month.split("-");
+        const date = new Date(Number(year), Number(monthPart) - 1, 1);
+        return date.toLocaleDateString("en-PH", { month: "long", year: "numeric" });
+    }, [report, month]);
+
+    const exportPayroll = () => {
+        if (!report) return;
+
+        const rows: (string | number)[][] = [
+            ["Attendance and Payroll Summary", reportLabel],
+            ["Daily Wage", report.dailyWage],
+            [],
+            ["Beneficiary", "Days Worked", "Daily Wage", "Total Payout"]
+        ];
+
+        report.attendancePayrollSummary.forEach((row) => {
+            rows.push([row.full_name, row.days_worked, row.daily_wage, row.total_payout]);
+        });
+
+        rows.push([]);
+        rows.push(["TOTAL", report.totals.days_worked, report.dailyWage, report.totals.total_payout]);
+
+        downloadCsv(`attendance_payroll_${report.period.month}.csv`, buildCsv(rows));
+    };
+
+    const batchStats = useMemo(() => {
+        const gcashTotal = batches
+            .filter((batch) => batch.mode === "GCash")
+            .reduce((acc, batch) => acc + batch.amount, 0);
+        const cashTotal = batches
+            .filter((batch) => batch.mode === "Cash")
+            .reduce((acc, batch) => acc + batch.amount, 0);
+
+        return {
+            gcashTotal,
+            cashTotal,
+            totalRecipients: batches.reduce((acc, batch) => acc + batch.recipients, 0)
+        };
+    }, [batches]);
+
+    const avgDaysWorked = useMemo(() => {
+        if (!report?.attendancePayrollSummary?.length) return 0;
+        const totalDays = report.attendancePayrollSummary.reduce((acc, row) => acc + row.days_worked, 0);
+        return Math.round((totalDays / report.attendancePayrollSummary.length) * 10) / 10;
+    }, [report]);
+
+    const statusClass = (status: string) => {
+        if (status === "Released") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+        if (status === "Processing") return "bg-amber-50 text-amber-700 border-amber-200";
+        return "bg-slate-50 text-slate-700 border-slate-200";
+    };
+
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Disbursement Logs</h1>
-                    <p className="text-sm text-gray-500 tracking-tight">Managing GCash transfers and on-site Cash payouts.</p>
-                </div>
-                <div className="flex gap-2">
-                    <button className="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gray-50 transition-all">
+        <div className="mx-auto w-full max-w-7xl space-y-6">
+            <section className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-slate-50 p-5 md:p-6">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="space-y-2">
+                        <p className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                            Payroll Operations
+                        </p>
+                        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Payments and Payroll</h1>
+                        <p className="text-sm text-slate-600 md:text-base">
+                            Review attendance-based payout, export monthly payroll, and monitor disbursement batches in one place.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                        <label className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700">
+                        <Calendar size={14} />
+                        <input
+                            type="month"
+                            value={month}
+                            onChange={(event) => setMonth(event.target.value)}
+                            className="outline-none"
+                        />
+                    </label>
+
+                    <button className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600 transition-all hover:bg-slate-50">
                         History
                     </button>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-                        <Plus size={18} />
+                    <button
+                        onClick={exportPayroll}
+                        disabled={!report || loading}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <Download size={14} />
+                        Export Payroll
+                    </button>
+
+                    <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-[11px] font-medium text-slate-700 transition-all hover:bg-slate-200">
+                        <Plus size={14} />
                         New Payroll
                     </button>
-                </div>
-            </div>
-
-            {/* Payment Mode Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* GCash Stats */}
-                <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-2xl shadow-lg shadow-blue-100 text-white">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 bg-white/20 rounded-xl">
-                            <Smartphone size={24} />
-                        </div>
-                        <span className="text-[10px] font-bold bg-white/20 px-2 py-1 rounded uppercase">Digital Payout</span>
                     </div>
-                    <p className="text-blue-100 text-xs font-bold uppercase tracking-widest">Total GCash Released</p>
-                    <h3 className="text-3xl font-black mt-1">₱1,275,000</h3>
+                </div>
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payroll Total</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">{formatPeso(report?.totals?.total_payout || 0)}</p>
+                    <p className="mt-1 text-xs text-slate-500">From attendance summary</p>
                 </div>
 
-                {/* Cash Stats */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-                            <Banknote size={24} />
-                        </div>
-                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded uppercase">On-site Payout</span>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Beneficiaries in Payroll</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">{report?.attendancePayrollSummary?.length || 0}</p>
+                    <p className="mt-1 text-xs text-slate-500">Current selected period</p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Avg. Days Worked</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">{avgDaysWorked}</p>
+                    <p className="mt-1 text-xs text-slate-500">Per beneficiary</p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Coverage Period</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">{reportLabel}</p>
+                    <p className="mt-1 text-xs text-slate-500">Monthly report window</p>
+                </div>
+            </section>
+
+            {/* Payroll Summary */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <div>
+                        <h2 className="text-xl font-semibold text-slate-900">Attendance / Payroll Summary</h2>
+                        <p className="text-sm text-slate-500">Period: {reportLabel} | Formula: Days Worked x {formatPeso(report?.dailyWage || 435)}</p>
                     </div>
-                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Total Cash Disbursed</p>
-                    <h3 className="text-3xl font-black text-gray-900 mt-1">₱450,000</h3>
+                    <span className="inline-flex w-fit items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+                        <Wallet size={14} />
+                        Daily Wage: {formatPeso(report?.dailyWage || 435)}
+                    </span>
                 </div>
-            </div>
 
-            {/* Payroll Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                {loading ? (
+                    <div className="py-6 text-sm text-slate-500">Loading payroll...</div>
+                ) : error ? (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        <CircleAlert size={16} className="mt-0.5" />
+                        <span>{error}</span>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full min-w-[760px] text-sm">
+                            <thead className="border-b border-slate-200 bg-slate-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Beneficiary</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Days Worked</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Daily Wage</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Total Payout</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {report?.attendancePayrollSummary?.map((row) => (
+                                    <tr key={row.user_id} className="hover:bg-slate-50/70">
+                                        <td className="px-4 py-3 font-medium text-slate-800">{row.full_name}</td>
+                                        <td className="px-4 py-3 text-right text-slate-700">{row.days_worked}</td>
+                                        <td className="px-4 py-3 text-right text-slate-700">{formatPeso(row.daily_wage)}</td>
+                                        <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatPeso(row.total_payout)}</td>
+                                    </tr>
+                                ))}
+                                {!report?.attendancePayrollSummary?.length && (
+                                    <tr>
+                                        <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                                            No attendance records found for this period.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                            <tfoot className="border-t border-slate-200 bg-slate-50">
+                                <tr>
+                                    <td className="px-4 py-3 font-semibold text-slate-900">TOTAL</td>
+                                    <td className="px-4 py-3 text-right font-semibold text-slate-900">{report?.totals?.days_worked || 0}</td>
+                                    <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatPeso(report?.dailyWage || 435)}</td>
+                                    <td className="px-4 py-3 text-right text-base font-semibold text-slate-900">{formatPeso(report?.totals?.total_payout || 0)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                )}
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-100 px-6 py-4">
+                    <h3 className="text-lg font-semibold text-slate-900">Disbursement Batch Log</h3>
+                    <p className="text-xs text-slate-500">Track source, status, and release details per batch.</p>
+                </div>
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em]">
+                        <thead className="border-b border-slate-100 bg-slate-50">
+                            <tr className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                                 <th className="px-8 py-5">Payroll Batch</th>
                                 <th className="px-6 py-5">Mode</th>
                                 <th className="px-6 py-5">Amount</th>
@@ -104,35 +338,35 @@ const PaymentPage = () => {
                                 <th className="px-6 py-5 text-right">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-slate-100">
                             {batches.map((batch) => (
-                                <tr key={batch.id} className="hover:bg-gray-50/50 transition-colors">
+                                <tr key={batch.id} className="transition-colors hover:bg-slate-50/70">
                                     <td className="px-8 py-5">
                                         <div className="flex flex-col">
-                                            <span className="font-bold text-gray-900">{batch.program}</span>
-                                            <span className="text-[10px] text-gray-400 font-mono tracking-tighter">{batch.id} • {batch.recipients} pax</span>
+                                            <span className="font-semibold text-slate-900">{batch.program}</span>
+                                            <span className="font-mono text-[10px] tracking-tighter text-slate-400">{batch.id} • {batch.recipients} pax • {batch.date}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-5">
-                                        <div className={`flex items-center gap-2 text-xs font-bold ${batch.mode === 'GCash' ? 'text-blue-600' : 'text-emerald-600'}`}>
+                                        <div className={`flex items-center gap-2 text-xs font-bold ${batch.mode === "GCash" ? "text-blue-600" : "text-emerald-600"}`}>
                                             {batch.mode === 'GCash' ? <Smartphone size={14} /> : <Banknote size={14} />}
                                             {batch.mode}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-5 font-black text-gray-900 text-sm">
+                                    <td className="px-6 py-5 text-sm font-semibold text-slate-900">
                                         ₱{batch.amount.toLocaleString()}
                                     </td>
                                     <td className="px-6 py-5">
-                                        <div className="flex items-center gap-1.5">
-                                            {batch.status === 'Released' ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Clock size={14} className="text-yellow-500" />}
-                                            <span className="text-xs font-bold text-gray-700">{batch.status}</span>
+                                        <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(batch.status)}`}>
+                                            {batch.status === "Released" ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                                            <span>{batch.status}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-5">
-                                        <code className="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-bold uppercase">{batch.ref}</code>
+                                        <code className="rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-600">{batch.ref}</code>
                                     </td>
                                     <td className="px-6 py-5 text-right">
-                                        <button className="bg-gray-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-800 transition-all">
+                                        <button className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-slate-800">
                                             Review
                                         </button>
                                     </td>
@@ -141,7 +375,7 @@ const PaymentPage = () => {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
         </div>
     );
 };

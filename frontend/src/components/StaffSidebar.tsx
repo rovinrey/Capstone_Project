@@ -9,16 +9,16 @@ import {
 } from 'lucide-react';
 import { logout as clearAuth } from '../utils/auth';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function StaffSidebar() {
 
     const staffMenuItems = [
-        { name: "Dashboard", path: "/staff", icon: <LayoutDashboard size={18} /> },
-        { name: "Beneficiaries", path: "/beneficiary-management", icon: <Users size={18} /> },
-        { name: "Attendance", path: "/attendance", icon: <Calendar size={18} /> },
-        { name: "Issues", path: "/issues", icon: <AlertCircle size={18} /> },
-        { name: "Performance", path: "/performance", icon: <TrendingUp size={18} /> },
+        { name: "Dashboard", path: "/staff", icon: <LayoutDashboard size={18} />, exact: true },
+        { name: "Beneficiaries", path: "/staff/beneficiaries", icon: <Users size={18} /> },
+        { name: "Attendance", path: "/staff/attendance", icon: <Calendar size={18} /> },
+        { name: "Issues", path: "/staff/issues", icon: <AlertCircle size={18} /> },
+        { name: "Performance", path: "/staff/performance", icon: <TrendingUp size={18} /> },
     ];
 
     const navigate = useNavigate();
@@ -26,7 +26,7 @@ function StaffSidebar() {
     const logout = async () => {
         clearAuth();
         try {
-            await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+            await fetch(`${API_BASE}/logout`, { method: 'POST' });
         } catch {
             // ignore
         }
@@ -48,6 +48,7 @@ function StaffSidebar() {
                     <NavLink
                         key={item.name}
                         to={item.path}
+                        end={item.exact}
                         className={({ isActive }) => `
                             flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
                             ${isActive 

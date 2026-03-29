@@ -32,7 +32,7 @@ const getApprovedProgram = async (userId) => {
   const query = `
     SELECT program_type
     FROM applications
-    WHERE user_id = ? AND status = 'Approved'
+    WHERE user_id = ? AND UPPER(status) = 'APPROVED'
     ORDER BY COALESCE(approval_date, updated_at, applied_at) DESC
     LIMIT 1
   `;
@@ -171,4 +171,33 @@ exports.timeOut = async (userId) => {
   await db.execute(query, [approvedProgram.program_type, rows[0].attendance_id]);
 
   return await exports.getTodayAttendance(userId);
+};
+
+exports.getMonitoringRecords = async (limit = 200) => {
+  await ensureAttendanceTable();
+
+  const safeLimit = Number(limit) > 0 ? Number(limit) : 200;
+  const query = `
+    SELECT
+      ar.attendance_id,
+      ar.user_id,
+      ar.program_type,
+      ar.attendance_date,
+      ar.time_in,
+      ar.time_out,
+      ar.status,
+      ar.remarks,
+      COALESCE(
+        NULLIF(TRIM(CONCAT_WS(' ', b.first_name, b.middle_name, b.last_name)), ''),
+        u.user_name
+      ) AS beneficiary_name
+    FROM attendance_records ar
+    LEFT JOIN users u ON u.user_id = ar.user_id
+    LEFT JOIN beneficiaries b ON b.user_id = ar.user_id
+    ORDER BY ar.attendance_date DESC, ar.attendance_id DESC
+    LIMIT ?
+  `;
+
+  const [rows] = await db.execute(query, [safeLimit]);
+  return rows;
 };

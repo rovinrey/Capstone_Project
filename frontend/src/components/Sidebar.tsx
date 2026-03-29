@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
+    Clock3,
   CreditCard, 
   ClipboardList, 
   BarChart3, 
@@ -16,6 +17,7 @@ function Sidebar() {
     const menuItems = [
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} />, exact: true },
         { name: "Beneficiary", path: "/beneficiaries", icon: <Users size={18} />, exact: true },
+        { name: "Attendance", path: "/attendance", icon: <Clock3 size={18} />, exact: true },
         { name: "Payment", path: "/payment", icon: <CreditCard size={18} />, exact: true },
         { name: "Programs", path: "/programs", icon: <ClipboardList size={18} />, exact: true },
         { name: "Reports", path: "/reports", icon: <BarChart3 size={18} />, exact: true },
@@ -41,7 +43,7 @@ function Sidebar() {
             {/* Logo Section */}
             <div className="p-8 border-b border-gray-100">
                 <h2 className="text-2xl font-black tracking-tighter text-blue-600 leading-tight">
-                    DOLE <span className="text-gray-800 font-light text-lg block">tupad & pangkabuhayan</span>
+                    PESO <span className="text-gray-800 font-light text-lg block">tupad & pangkabuhayan</span>
                 </h2>
             </div>
 

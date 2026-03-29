@@ -27,7 +27,15 @@ exports.applyToTupad = async (req, res) => {
 // Apply to SPES program
 exports.applyToSpes = async (req, res) => {
     try {
-        const result = await spesService.applyToSpes(req.body);
+        const data = req.body;
+        if (!data.user_id && req.user?.id) {
+            data.user_id = req.user.id;
+        }
+        if (!data.user_id) {
+            return res.status(400).json({ message: 'User ID is required for SPES application' });
+        }
+
+        const result = await spesService.applyToSpes(data);
         res.status(201).json({ message: "SPES Application Success!", id: result.insertId });
         
     } catch (error) {
@@ -124,7 +132,8 @@ exports.createSpesDetails = async (req, res) => {
 exports.getRecentApplications = async (req, res) => {
     try {
         const limit = req.query.limit || 10;
-        const userId = req.query.userId || req.user?.id || null;
+        const isBeneficiaryRequest = req.user?.role === 'beneficiary';
+        const userId = req.query.userId || (isBeneficiaryRequest ? req.user?.id : null);
         const [applications] = await beneficiaryService.getRecentApplications(limit, userId);
         res.status(200).json(applications);
     } catch (error) {
@@ -193,7 +202,8 @@ exports.getAllApplications = async (req, res) => {
 // fetch all pending applications
 exports.getPendingApplications = async (req, res) => {
     try {
-        const [applications] = await beneficiaryService.getPendingApplications();
+        const { programType } = req.query;
+        const [applications] = await beneficiaryService.getPendingApplications(programType || null);
         res.status(200).json(applications);
     } catch (error) {
         console.error("Error getting pending apps:", error.message);
@@ -204,12 +214,12 @@ exports.getPendingApplications = async (req, res) => {
 // fetch apps filtered by status (query ?status=)
 exports.getApplicationsByStatus = async (req, res) => {
     try {
-        const { status } = req.query;
+        const { status, programType } = req.query;
         if (!status) {
             const [applications] = await beneficiaryService.getAllApplications();
             return res.status(200).json(applications);
         }
-        const [applications] = await beneficiaryService.getApplicationsByStatus(status);
+        const [applications] = await beneficiaryService.getApplicationsByStatus(status, programType || null);
         res.status(200).json(applications);
     } catch (error) {
         console.error("Error getting applications by status:", error.message);
@@ -275,8 +285,21 @@ exports.getApplicationStatus = async (req, res) => {
 
 exports.exportApplications = async (req, res) => {
     try {
-        const { programType } = req.query;
-        const rows = await beneficiaryService.getApplicationsForExport(programType || null);
+        if (req.user?.role !== 'admin') {
+            return res.status(403).json({ message: 'Only admin can export applications' });
+        }
+
+        const { programType, status } = req.query;
+        const normalizedStatus = status ? String(status) : null;
+
+        if (normalizedStatus && !['Pending', 'Approved'].includes(normalizedStatus)) {
+            return res.status(400).json({ message: 'Status must be Pending or Approved for export' });
+        }
+
+        const rows = await beneficiaryService.getApplicationsForExport(
+            programType || null,
+            normalizedStatus || null
+        );
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Applications');
@@ -299,7 +322,8 @@ exports.exportApplications = async (req, res) => {
         rows.forEach((row) => worksheet.addRow(row));
 
         const safeProgram = (programType || 'all').toString().replace(/\s+/g, '_');
-        const filename = `applications_${safeProgram}.xlsx`;
+        const safeStatus = (normalizedStatus || 'all').toString().toLowerCase();
+        const filename = `applications_${safeStatus}_${safeProgram}.xlsx`;
 
         res.setHeader(
             'Content-Type',
@@ -312,5 +336,16 @@ exports.exportApplications = async (req, res) => {
     } catch (error) {
         console.error('Error exporting applications:', error.message);
         res.status(500).json({ message: 'Error exporting applications', error: error.message });
+    }
+};
+
+exports.getTupadMonthlyReport = async (req, res) => {
+    try {
+        const month = req.query.month;
+        const report = await beneficiaryService.getTupadMonthlyReport(month);
+        res.status(200).json(report);
+    } catch (error) {
+        console.error('Error generating TUPAD monthly report:', error.message);
+        res.status(500).json({ message: 'Error generating monthly report', error: error.message });
     }
 };

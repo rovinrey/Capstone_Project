@@ -8,10 +8,13 @@ import BeneficiaryDashboard from './pages/beneficiary/BeneficiaryDashboard';
 import BeneficiaryApplication from './pages/beneficiary/BeneficiaryApplication';
 import BeneficiaryAttendance from './pages/beneficiary/BeneficiaryAttendance';
 import BeneficiaryPayment from './pages/beneficiary/BeneficiaryPayment';
+import BeneficiaryRequirements from './pages/beneficiary/BeneficiaryRequirements';
+import SpesOfficialForms from './pages/beneficiary/forms/SpesOfficialForms';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import Sidebar from "./components/Sidebar"; // Check your actual path here
 import BeneficiarySidebar from "./components/BeneficiarySidebar";
+import StaffSidebar from './components/StaffSidebar';
 
 
 import AdminDashboard from './pages/admin/navigation/AdminDashboard';
@@ -19,16 +22,22 @@ import Beneficiaries from './pages/admin/navigation/Beneficiary';
 import Programs from './pages/admin/navigation/Programs';
 import Payment from './pages/admin/navigation/Payment'
 import Reports from './pages/admin/navigation/Reports';
+import AttendancePage from './pages/admin/navigation/Attendance';
 import ApplicationApproval from './pages/admin/navigation/ApplicationApproval';
+import ApplicationDetails from './pages/admin/navigation/ApplicationDetails';
 
 import StaffDashboard from './pages/staff/StaffDashboard';
+import BeneficiaryManagement from './pages/staff/BeneficiaryManagement';
+import AttendanceTracking from './pages/staff/AttendanceTracking';
+import IssueTracking from './pages/staff/IssueTracking';
+import PerformanceReports from './pages/staff/PerformanceReports';
 
 // 1. Create an Admin Layout so the Sidebar is persistent
 // 1. Create an Admin Layout with a FIXED Sidebar
 const AdminLayout = () => (
   <div className="flex bg-gray-50 h-screen overflow-hidden">
     {/* Sidebar wrapper to ensure it takes full height and doesn't shrink */}
-    <div className="w-64 h-full flex-shrink-0 border-r bg-white">
+    <div className="w-64 h-full flex-shrink-0">
       <Sidebar />
     </div>
 
@@ -42,8 +51,8 @@ const AdminLayout = () => (
 // Do the same for StaffLayout
 const StaffLayout = () => (
   <div className="flex bg-gray-50 h-screen overflow-hidden">
-    <div className="w-64 h-full flex-shrink-0 border-r bg-white">
-      <Sidebar />
+    <div className="w-64 h-full flex-shrink-0">
+      <StaffSidebar />
     </div>
     <main className="flex-1 overflow-y-auto p-8">
       <Outlet />
@@ -71,7 +80,7 @@ const BeneficiaryLayout = () => {
       {/* Sidebar Overlay for Mobile */}
       {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50"
+          className="lg:hidden fixed inset-0 bg-slate-100/70 backdrop-blur-[1px] z-30"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -109,10 +118,12 @@ function App() {
           {/* All these paths will now show the Sidebar */}
           <Route path="/dashboard" element={<AdminDashboard />} />
           <Route path="/beneficiaries" element={<Beneficiaries />} />
+          <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/programs" element={<Programs />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/applications" element={<ApplicationApproval />} />
+          <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
 
           {/* Redirect /admin to /dashboard */}
           <Route path="/admin" element={<Navigate to="/dashboard" />} />
@@ -128,10 +139,10 @@ function App() {
           }
         >
           <Route path="/staff" element={<StaffDashboard />} />
-          <Route path="/beneficiaries" element={<Beneficiaries />} />
-          <Route path="/programs" element={<Programs />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/payment" element={<Payment />} />
+          <Route path="/staff/beneficiaries" element={<BeneficiaryManagement />} />
+          <Route path="/staff/attendance" element={<AttendanceTracking />} />
+          <Route path="/staff/issues" element={<IssueTracking />} />
+          <Route path="/staff/performance" element={<PerformanceReports />} />
         </Route>
 
 
@@ -145,6 +156,8 @@ function App() {
         >
           <Route path="/beneficiary" element={<BeneficiaryDashboard />} />
           <Route path="/beneficiary/application" element={<BeneficiaryApplication />} />
+          <Route path="/beneficiary/requirements" element={<BeneficiaryRequirements />} />
+          <Route path="/beneficiary/spes-forms" element={<SpesOfficialForms />} />
           <Route path="/beneficiary/attendance" element={<BeneficiaryAttendance />} />
           <Route path="/beneficiary/payment" element={<BeneficiaryPayment />} />
         </Route>

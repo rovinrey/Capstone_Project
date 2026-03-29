@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
 import axios from "axios";
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000/api';
+const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
 
 interface PerformanceData {

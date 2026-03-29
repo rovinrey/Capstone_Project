@@ -71,6 +71,12 @@ function TupadForm() {
                 return; 
             }
 
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Session expired. Please login again.');
+                return;
+            }
+
             const payload = {
                 ...formData,
                 user_id: Number(userId),
@@ -81,7 +87,9 @@ function TupadForm() {
             // 3. Environment Variables: Never hardcode localhost in production.
             const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
             
-            const response = await axios.post(`${API_BASE_URL}/api/forms/apply/tupad`, payload);
+            const response = await axios.post(`${API_BASE_URL}/api/forms/apply/tupad`, payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
             console.log("Response:", response.data);
             alert("Form submitted successfully!");

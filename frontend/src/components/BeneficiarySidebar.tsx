@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileText,
+    ListChecks,
   Clock,
   CreditCard,
   LogOut,
@@ -20,6 +21,7 @@ function BeneficiarySidebar({ isOpen, setIsOpen }: BeneficiarySidebarProps) {
     const menuItems = [
         { name: "Dashboard", path: "/beneficiary", icon: <LayoutDashboard size={18} />, exact: true },
         { name: "Application", path: "/beneficiary/application", icon: <FileText size={18} />, exact: true },
+        { name: "Requirements", path: "/beneficiary/requirements", icon: <ListChecks size={18} />, exact: true },
         { name: "Attendance", path: "/beneficiary/attendance", icon: <Clock size={18} />, exact: true },
         { name: "Payment", path: "/beneficiary/payment", icon: <CreditCard size={18} />, exact: true },
     ];
@@ -49,7 +51,7 @@ function BeneficiarySidebar({ isOpen, setIsOpen }: BeneficiarySidebarProps) {
             {/* Logo Section */}
             <div className="p-5 lg:p-8 border-b border-gray-100 relative">
                 <h2 className={`text-2xl font-black tracking-tighter text-blue-600 leading-tight ${!isOpen && 'text-center'}`}>
-                    DOLE {isOpen && <span className="text-gray-800 font-light text-lg block">tupad & pangkabuhayan</span>}
+                    PESO {isOpen && <span className="text-gray-800 font-light text-lg block">tupad & pangkabuhayan</span>}
                 </h2>
                 <button
                     onClick={() => setIsOpen(!isOpen)}
