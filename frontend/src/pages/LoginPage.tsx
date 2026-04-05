@@ -1,69 +1,85 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
+import { setAuth } from "../utils/auth";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+const ROLE_REDIRECTS: Record<string, string> = {
+    admin: "/admin",
+    staff: "/staff",
+    beneficiary: "/beneficiary",
+};
 
 function Login() {
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [credentials, setCredentials] = useState({
         username: "",
         password: "",
-        role: "beneficiary"
     });
 
-    const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement>
-    ) => {
-        setCredentials({
-            ...credentials,
-            [e.target.name]: e.target.value
-        });
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setCredentials((prev) => ({
+            ...prev,
+            [e.target.name]: e.target.value,
+        }));
     };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
 
+        const trimmedIdentifier = credentials.username.trim();
+        if (!trimmedIdentifier || !credentials.password) {
+            setError("Please fill in all fields.");
+            return;
+        }
+
+        setIsSubmitting(true);
+
         try {
             const response = await axios.post(
-                "http://localhost:5000/api/auth/login",
+                `${API_BASE_URL}/api/auth/login`,
                 {
-                    identifier: credentials.username,
-                    password: credentials.password
+                    identifier: trimmedIdentifier,
+                    password: credentials.password,
                 }
             );
 
-            console.log("Login response:", response.data); // Debugging log
-
             const { token, role, user } = response.data;
 
-            if (!user) {
-                throw new Error("User data missing in response");
+            if (!token || !role || !user) {
+                throw new Error("Invalid server response.");
             }
 
             const userRole = role.toLowerCase();
-            // check for common id naming variations (id, user_id, etc.)
             const userId = user.id || user.user_id;
 
             if (!userId) {
-                console.error("Backend did not provide a User ID. check the api response!");
+                throw new Error("Invalid server response.");
             }
 
-            localStorage.setItem("role", userRole);
-            localStorage.setItem("token",token); // Store JWT token
-            localStorage.setItem("user_name", user.user_name); // Store user_name for profile
-            localStorage.setItem("user_id", String(userId)); // Store user ID for form submissions
+            if (!(userRole in ROLE_REDIRECTS)) {
+                throw new Error("Unrecognized account role.");
+            }
 
-            if (role === "admin") {
-                navigate("/admin");
+            setAuth(token, userRole as "admin" | "beneficiary" | "staff");
+            localStorage.setItem("user_name", user.user_name);
+            localStorage.setItem("user_id", String(userId));
+
+            navigate(ROLE_REDIRECTS[userRole], { replace: true });
+        } catch (err: unknown) {
+            if (err instanceof AxiosError) {
+                setError(err.response?.data?.message || "Unable to connect. Please try again.");
+            } else if (err instanceof Error) {
+                setError(err.message);
             } else {
-                navigate("/beneficiary");
+                setError("An unexpected error occurred.");
             }
-        } catch (err: any) {
-            console.error("Login error:", err); // Debugging log
-            setError(
-                err.response?.data?.message || err.message || "Connection error"
-            );
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -75,40 +91,56 @@ function Login() {
                 </h3>
 
                 {error && (
-                    <div className="text-red-500 text-center text-sm mb-4">
+                    <div role="alert" className="text-red-500 text-center text-sm mb-4">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4" noValidate>
+                    <div>
+                        <label htmlFor="username" className="sr-only">
+                            Email or Phone
+                        </label>
+                        <input
+                            id="username"
+                            type="text"
+                            name="username"
+                            placeholder="Email or Phone"
+                            value={credentials.username}
+                            onChange={handleChange}
+                            required
+                            autoComplete="username"
+                            maxLength={254}
+                            disabled={isSubmitting}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
+                        />
+                    </div>
 
-                    {/* Email or Phone */}
-                    <input
-                        type="text"
-                        name="username"
-                        placeholder="Email or Phone"
-                        value={credentials.username}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    />
-
-                    {/* Password */}
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="Password"
-                        value={credentials.password}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    />
+                    <div>
+                        <label htmlFor="password" className="sr-only">
+                            Password
+                        </label>
+                        <input
+                            id="password"
+                            type="password"
+                            name="password"
+                            placeholder="Password"
+                            value={credentials.password}
+                            onChange={handleChange}
+                            required
+                            autoComplete="current-password"
+                            maxLength={128}
+                            disabled={isSubmitting}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
+                        />
+                    </div>
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg mt-4 transition active:scale-95"
+                        disabled={isSubmitting}
+                        className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg mt-4 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        LOGIN
+                        {isSubmitting ? "Signing in…" : "LOGIN"}
                     </button>
                 </form>
 

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { LayoutGrid, Clock } from "lucide-react";
+import { LayoutGrid, Clock, AlertCircle, CheckCircle2, Clock3 } from "lucide-react";
 
 import TupadForm from "./forms/TUPADform";
 import SpesForm from "./forms/SpesOfficialForms";
@@ -9,8 +9,11 @@ import DilpForm from "./forms/DILPform";
 import GIPform from "./forms/GIPform";
 import JobSeekerForm from "./forms/JobseekersForm";
 import SPESDocumentsModule from "../../components/SPESDocumentsModule";
+import DocumentUploadModule, { type RequirementDef } from "../../components/DocumentUploadModule";
 import ApplicationStatusPanel from "../../components/ApplicationStatusPanel";
+import RequirementStatusBanner from "../../components/RequirementStatusBanner";
 import applicationStatusAPI, { type ApplicationSubmission } from "../../api/applicationStatus.api";
+import { useRequirementStatus } from "../../hooks/useRequirementStatus";
 import {
     BENEFICIARY_PROGRAMS,
     BENEFICIARY_SELECTED_PROGRAM_KEY,
@@ -18,7 +21,40 @@ import {
 } from '../../constants/beneficiaryPrograms';
 
 type MainTab = 'apply' | 'status';
-type SpesSubTab = 'form' | 'requirements';
+type SubTab = 'form' | 'requirements';
+
+// ─── Upload requirement defs for non-SPES programs ───────────────────────────
+
+const UPLOAD_REQUIREMENTS: Record<string, RequirementDef[]> = {
+    tupad: [
+        { id: 'government_id', label: 'Government Issued ID', description: 'Valid government-issued ID with current address.' },
+        { id: 'barangay_certification', label: 'Barangay Certification', description: 'Certificate stating residency and displaced/disadvantaged worker status.' },
+        { id: 'birth_certificate', label: 'Birth Certificate', description: 'PSA-issued copy of birth certificate (if required by local unit).' },
+    ],
+    dilp: [
+        { id: 'valid_government_id', label: 'Valid Government ID', description: 'Government-issued identification with valid ID number.' },
+        { id: 'project_proposal', label: 'Project Proposal', description: 'Brief description of the proposed livelihood project.' },
+        { id: 'barangay_clearance', label: 'Barangay Clearance', description: 'Clearance from the barangay where the business will operate.' },
+        { id: 'business_registration', label: 'Business Registration', description: 'DTI or SEC registration if the enterprise is already existing.' },
+    ],
+    gip: [
+        { id: 'government_id', label: 'Government ID', description: 'Valid government-issued identification document.' },
+        { id: 'transcript_of_records', label: 'Transcript of Records', description: 'Official transcript or certified true copy from the school.' },
+        { id: 'certificate_of_graduation', label: 'Certificate of Graduation', description: 'Diploma or certificate of graduation from your institution.' },
+        { id: 'barangay_clearance', label: 'Barangay Clearance', description: 'Clearance from your residential barangay.' },
+        { id: 'nbi_police_clearance', label: 'NBI / Police Clearance', description: 'National Bureau of Investigation or police clearance certificate.' },
+    ],
+    job_seekers: [
+        { id: 'updated_resume', label: 'Updated Resume / CV', description: 'Current resume or curriculum vitae with contact details.' },
+        { id: 'valid_government_id', label: 'Valid Government ID', description: 'Any valid government-issued identification.' },
+        { id: 'proof_of_address', label: 'Proof of Address', description: 'Barangay certificate or utility bill as proof of residence.' },
+        { id: 'certifications', label: 'Certifications (if any)', description: 'TESDA, NCII, or other relevant training certifications.' },
+    ],
+};
+
+const PROGRAM_API_KEY: Record<ProgramKey, string> = {
+    TUPAD: 'tupad', SPES: 'spes', DILP: 'dilp', GIP: 'gip', JOBSEEKERS: 'job_seekers',
+};
 
 function BeneficiaryApplication() {
     const navigate = useNavigate();
@@ -28,9 +64,28 @@ function BeneficiaryApplication() {
 
     const [mainTab, setMainTab] = useState<MainTab>('apply');
     const [activeProgram, setActiveProgram] = useState<ProgramKey>('TUPAD');
-    const [spesSubTab, setSpesSubTab] = useState<SpesSubTab>('form');
-    const [allDocsSubmitted, setAllDocsSubmitted] = useState(false);
+    const [subTab, setSubTab] = useState<SubTab>('form');
     const [submissions, setSubmissions] = useState<ApplicationSubmission[]>([]);
+
+    const { getStatus, isComplete, loading: reqLoading, error: reqError } = useRequirementStatus();
+    const allDocsSubmitted = isComplete(activeProgram);
+
+    // ── Check if user already submitted an application for the active program ──
+    const existingApplication = useMemo(() => {
+        // Map frontend ProgramKey to backend program_type stored in DB
+        const PROGRAM_TYPE_MAP: Record<ProgramKey, string> = {
+            TUPAD: 'tupad',
+            SPES: 'spes',
+            DILP: 'dilp',
+            GIP: 'gip',
+            JOBSEEKERS: 'job_seekers',
+        };
+        const dbProgramType = PROGRAM_TYPE_MAP[activeProgram];
+        // Find the latest submission for this program that is Pending or Approved
+        return submissions.find(
+            (s) => s.program_type === dbProgramType && (s.status === 'Pending' || s.status === 'Approved')
+        ) ?? null;
+    }, [submissions, activeProgram]);
 
     useEffect(() => {
         localStorage.setItem(BENEFICIARY_SELECTED_PROGRAM_KEY, activeProgram);
@@ -51,7 +106,7 @@ function BeneficiaryApplication() {
             try {
                 const [profileRes, statusRes] = await Promise.allSettled([
                     axios.get(
-                        `http://localhost:5000/api/auth/getProfile?user_name=${user_name}`,
+                        `http://localhost:5000/api/auth/getProfile`,
                         { headers: { Authorization: `Bearer ${token}` } }
                     ),
                     applicationStatusAPI.getStatus(userId || '', token),
@@ -156,7 +211,7 @@ function BeneficiaryApplication() {
                             <div className="relative w-full sm:max-w-sm">
                                 <select
                                     value={activeProgram}
-                                    onChange={(e) => setActiveProgram(e.target.value as ProgramKey)}
+                                    onChange={(e) => { setActiveProgram(e.target.value as ProgramKey); setSubTab('form'); }}
                                     className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-10 text-sm font-semibold text-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
                                 >
                                     {BENEFICIARY_PROGRAMS.map((p) => (
@@ -171,71 +226,122 @@ function BeneficiaryApplication() {
                             </div>
                         </div>
 
-                        {/* Non-SPES forms render directly */}
-                        {activeProgram !== 'SPES' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                {activeProgram === 'TUPAD'      && <TupadForm />}
-                                {activeProgram === 'DILP'       && <DilpForm />}
-                                {activeProgram === 'GIP'        && <GIPform />}
-                                {activeProgram === 'JOBSEEKERS' && <JobSeekerForm />}
+                        {/* Sub-tabs: Form / Requirements */}
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="flex gap-1 rounded-xl bg-gray-100 p-1 mb-6 w-full sm:w-auto sm:inline-flex">
+                                <button
+                                    type="button"
+                                    onClick={() => setSubTab('form')}
+                                    className={`flex-1 sm:flex-none rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
+                                        subTab === 'form'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    Application Form
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/beneficiary/requirements?program=${activeProgram}`)}
+                                    className={`flex-1 sm:flex-none rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
+                                        subTab === 'requirements'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    Requirements
+                                    {allDocsSubmitted && (
+                                        <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-emerald-500 align-middle" />
+                                    )}
+                                </button>
                             </div>
-                        )}
 
-                        {/* SPES: sub-tabs for form vs. requirements */}
-                        {activeProgram === 'SPES' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex gap-1 rounded-xl bg-gray-100 p-1 mb-6 w-full sm:w-auto sm:inline-flex">
-                                    <button
-                                        type="button"
-                                        onClick={() => setSpesSubTab('form')}
-                                        className={`flex-1 sm:flex-none rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
-                                            spesSubTab === 'form'
-                                                ? 'bg-white text-gray-900 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700'
-                                        }`}
-                                    >
-                                        Application Form
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSpesSubTab('requirements')}
-                                        className={`flex-1 sm:flex-none rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
-                                            spesSubTab === 'requirements'
-                                                ? 'bg-white text-gray-900 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700'
-                                        }`}
-                                    >
-                                        Requirements
-                                        {allDocsSubmitted && (
-                                            <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-emerald-500 align-middle" />
-                                        )}
-                                    </button>
-                                </div>
-
-                                {spesSubTab === 'form' && (
-                                    <div>
-                                        {!allDocsSubmitted && (
-                                            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-                                                <svg className="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                                                </svg>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-amber-800">Upload your requirements first</p>
-                                                    <p className="text-xs text-amber-600 mt-0.5">
-                                                        Switch to the <strong>Requirements</strong> tab and upload all documents before submitting your application form.
-                                                    </p>
-                                                </div>
+                            {subTab === 'form' && (
+                                <div>
+                                    {/* ── Already-submitted application banner ── */}
+                                    {existingApplication && (
+                                        <div className={`mb-5 rounded-xl border px-4 py-4 flex items-start gap-3 ${
+                                            existingApplication.status === 'Approved'
+                                                ? 'border-emerald-200 bg-emerald-50'
+                                                : 'border-blue-200 bg-blue-50'
+                                        }`}>
+                                            {existingApplication.status === 'Approved' ? (
+                                                <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-500 mt-0.5" />
+                                            ) : (
+                                                <Clock3 className="h-5 w-5 flex-shrink-0 text-blue-500 mt-0.5" />
+                                            )}
+                                            <div>
+                                                <p className={`text-sm font-semibold ${
+                                                    existingApplication.status === 'Approved' ? 'text-emerald-800' : 'text-blue-800'
+                                                }`}>
+                                                    {existingApplication.status === 'Approved'
+                                                        ? 'Your application has been approved'
+                                                        : 'You already have a pending application'}
+                                                </p>
+                                                <p className={`text-xs mt-0.5 ${
+                                                    existingApplication.status === 'Approved' ? 'text-emerald-600' : 'text-blue-600'
+                                                }`}>
+                                                    {existingApplication.status === 'Approved'
+                                                        ? `Your ${activeProgram} application was approved. You cannot submit another application for this program.`
+                                                        : `Your ${activeProgram} application (submitted ${new Date(existingApplication.applied_at).toLocaleDateString()}) is still being reviewed. Please wait for a decision before submitting again.`}
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMainTab('status')}
+                                                    className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold underline ${
+                                                        existingApplication.status === 'Approved' ? 'text-emerald-700 hover:text-emerald-900' : 'text-blue-700 hover:text-blue-900'
+                                                    }`}
+                                                >
+                                                    View My Submissions →
+                                                </button>
                                             </div>
-                                        )}
-                                        <SpesForm />
-                                    </div>
-                                )}
+                                        </div>
+                                    )}
 
-                                {spesSubTab === 'requirements' && (
-                                    <SPESDocumentsModule onAllSubmitted={() => setAllDocsSubmitted(true)} />
-                                )}
-                            </div>
-                        )}
+                                    {/* ── Requirement status banner (only when no blocking application) ── */}
+                                    {!existingApplication && (
+                                        <RequirementStatusBanner
+                                            programKey={activeProgram}
+                                            status={getStatus(activeProgram)}
+                                            loading={reqLoading}
+                                            error={reqError}
+                                        />
+                                    )}
+
+                                    {/* ── Application form (hidden when already applied) ── */}
+                                    {existingApplication ? (
+                                        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-12 text-center">
+                                            <AlertCircle className="mx-auto h-10 w-10 text-gray-300" />
+                                            <p className="mt-3 text-sm font-semibold text-gray-500">
+                                                Application form is disabled
+                                            </p>
+                                            <p className="mt-1 text-xs text-gray-400">
+                                                You already have a {existingApplication.status.toLowerCase()} application for this program.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {activeProgram === 'TUPAD'      && <TupadForm />}
+                                            {activeProgram === 'SPES'       && <SpesForm />}
+                                            {activeProgram === 'DILP'       && <DilpForm />}
+                                            {activeProgram === 'GIP'        && <GIPform />}
+                                            {activeProgram === 'JOBSEEKERS' && <JobSeekerForm />}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {subTab === 'requirements' && activeProgram === 'SPES' && (
+                                <SPESDocumentsModule />
+                            )}
+
+                            {subTab === 'requirements' && activeProgram !== 'SPES' && UPLOAD_REQUIREMENTS[PROGRAM_API_KEY[activeProgram]] && (
+                                <DocumentUploadModule
+                                    programType={PROGRAM_API_KEY[activeProgram]}
+                                    requirements={UPLOAD_REQUIREMENTS[PROGRAM_API_KEY[activeProgram]]}
+                                />
+                            )}
+                        </div>
                     </div>
                 )}
 

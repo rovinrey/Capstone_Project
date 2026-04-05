@@ -20,8 +20,21 @@ const INITIAL_FORM_STATE = {
     educational_attainment: "",
     job_preference: "",
     name_of_beneficiary: "",
+    address: "",
     program_type: "TUPAD",
 };
+
+function calculateAge(dateOfBirth: string): string {
+    if (!dateOfBirth) return "";
+    const birth = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    return age >= 0 ? String(age) : "";
+}
 
 function TupadForm() {
     const [formData, setFormData] = useState(INITIAL_FORM_STATE);
@@ -30,10 +43,18 @@ function TupadForm() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
 
-        setFormData((prev) => ({
-            ...prev,
-            [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
-        }));
+        setFormData((prev) => {
+            const updated = {
+                ...prev,
+                [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
+            };
+
+            if (name === "date_of_birth") {
+                updated.age = calculateAge(value);
+            }
+
+            return updated;
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -130,10 +151,13 @@ function TupadForm() {
                     {/* Personal Info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className={inputStyle} required />
-                        <input type="number" name="age" placeholder="Age" value={formData.age} onChange={handleChange} className={inputStyle} />
+                        <input type="number" name="age" placeholder="Age" value={formData.age} readOnly className={`${inputStyle} bg-gray-100 cursor-not-allowed`} />
                     </div>
 
                     <input type="text" name="contact_number" placeholder="Contact Number" value={formData.contact_number} onChange={handleChange} className={inputStyle} />
+
+                    {/* Address */}
+                    <input type="text" name="address" placeholder="Complete Address *" value={formData.address} onChange={handleChange} className={inputStyle} required />
 
                     {/* Employment */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

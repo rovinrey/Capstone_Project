@@ -1,7 +1,7 @@
 -- user table
 CREATE TABLE `users` (
   `user_id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_name` varchar(100) NOT NULL,
+  `user_name` varchar(100) NOT NULL, 
   `email` varchar(100) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
@@ -12,22 +12,7 @@ CREATE TABLE `users` (
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 
--- application table
-CREATE TABLE `applications` (
-  `application_id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL COMMENT 'link to user table ',
-  `status` enum('Pending','Approved','Rejected') DEFAULT 'Pending',
-  `rejection_reason` text DEFAULT NULL,
-  `applied_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `program_type` enum('tupad','spes','gip','dilp','job_seekers') NOT NULL,
-  `approval_date` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`application_id`),
-  KEY `user_id` (`user_id`),
-  CONSTRAINT `applications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
-
--- beneficiary table
+-- beneficiary table --
 
 CREATE TABLE `beneficiaries` (
   `beneficiary_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -47,6 +32,24 @@ CREATE TABLE `beneficiaries` (
   KEY `fk_user_beneficiary` (`user_id`),
   CONSTRAINT `fk_user_beneficiary` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+
+-- application table
+CREATE TABLE `applications` (
+  `application_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL COMMENT 'link to user table ',
+  `status` enum('Pending','Approved','Rejected') DEFAULT 'Pending',
+  `rejection_reason` text DEFAULT NULL,
+  `applied_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `program_type` enum('tupad','spes','gip','dilp','job_seekers') NOT NULL,
+  `approval_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `is_duplicate` tinyint(1) NOT NULL DEFAULT 0,
+  `duplicate_notes` text DEFAULT NULL,
+  PRIMARY KEY (`application_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `applications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 
 -- tupad details table
 CREATE TABLE `tupad_details` (
@@ -140,6 +143,23 @@ CREATE TABLE `programs` (
   PRIMARY KEY (`program_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 
+-- beneficiary documents table (generic uploads for all programs)
+CREATE TABLE `beneficiary_documents` (
+  `document_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `program_type` enum('tupad','spes','dilp','gip','job_seekers') NOT NULL,
+  `document_type` varchar(100) NOT NULL,
+  `original_name` varchar(255) NOT NULL,
+  `file_path` text NOT NULL,
+  `file_size` int(11) NOT NULL,
+  `mime_type` varchar(50) NOT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`document_id`),
+  UNIQUE KEY `unique_user_program_doctype` (`user_id`, `program_type`, `document_type`),
+  KEY `fk_doc_user` (`user_id`),
+  CONSTRAINT `fk_doc_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --attendance table
 CREATE TABLE `attendance` (
   `attendance_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -158,3 +178,15 @@ CREATE TABLE `attendance` (
   CONSTRAINT `attendance_ibfk_1` FOREIGN KEY (`beneficiary_id`) REFERENCES `beneficiaries` (`beneficiary_id`),
   CONSTRAINT `attendance_ibfk_2` FOREIGN KEY (`program_id`) REFERENCES `programs` (`program_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+-- system settings table (configurable values like daily wage)
+CREATE TABLE `system_settings` (
+  `setting_key` varchar(100) NOT NULL,
+  `setting_value` text NOT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Default daily wage
+INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES ('tupad_daily_wage', '435')
+ON DUPLICATE KEY UPDATE `setting_value` = `setting_value`;

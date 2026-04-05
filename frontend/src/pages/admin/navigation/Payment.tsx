@@ -3,13 +3,16 @@ import axios from "axios";
 import {
     Banknote,
     Calendar,
+    Check,
     CheckCircle2,
     CircleAlert,
     Clock,
     Download,
+    Pencil,
     Plus,
     Smartphone,
-    Wallet
+    Wallet,
+    X
 } from "lucide-react";
 
 type PayrollRow = {
@@ -77,6 +80,10 @@ const PaymentPage = () => {
     const [error, setError] = useState<string | null>(null);
     const [report, setReport] = useState<ReportResponse | null>(null);
 
+    const [editingWage, setEditingWage] = useState(false);
+    const [wageInput, setWageInput] = useState("");
+    const [savingWage, setSavingWage] = useState(false);
+
     const [batches] = useState([
         { 
             id: "GC-2026-881", 
@@ -133,6 +140,31 @@ const PaymentPage = () => {
     useEffect(() => {
         fetchPayroll(month);
     }, [month]);
+
+    const openWageEditor = () => {
+        setWageInput(String(report?.dailyWage || 435));
+        setEditingWage(true);
+    };
+
+    const saveWage = async () => {
+        const parsed = parseFloat(wageInput);
+        if (isNaN(parsed) || parsed <= 0) return;
+        setSavingWage(true);
+        try {
+            await axios.put(
+                `${API_BASE_URL}/api/forms/settings/daily-wage`,
+                { daily_wage: parsed },
+                { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+            );
+            setEditingWage(false);
+            fetchPayroll(month);
+        } catch (err: any) {
+            console.error(err);
+            setError(err?.response?.data?.message || "Failed to update daily wage.");
+        } finally {
+            setSavingWage(false);
+        }
+    };
 
     const reportLabel = useMemo(() => {
         if (!report?.period?.month) return month;
@@ -266,10 +298,48 @@ const PaymentPage = () => {
                         <h2 className="text-xl font-semibold text-slate-900">Attendance / Payroll Summary</h2>
                         <p className="text-sm text-slate-500">Period: {reportLabel} | Formula: Days Worked x {formatPeso(report?.dailyWage || 435)}</p>
                     </div>
-                    <span className="inline-flex w-fit items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
-                        <Wallet size={14} />
-                        Daily Wage: {formatPeso(report?.dailyWage || 435)}
-                    </span>
+                    {editingWage ? (
+                        <div className="inline-flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-slate-600">₱</span>
+                            <input
+                                type="number"
+                                min="1"
+                                step="0.01"
+                                value={wageInput}
+                                onChange={(e) => setWageInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") saveWage(); if (e.key === "Escape") setEditingWage(false); }}
+                                className="w-28 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-400"
+                                autoFocus
+                                disabled={savingWage}
+                            />
+                            <button
+                                onClick={saveWage}
+                                disabled={savingWage}
+                                className="rounded-lg bg-emerald-600 p-1.5 text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                                title="Save"
+                            >
+                                <Check size={14} />
+                            </button>
+                            <button
+                                onClick={() => setEditingWage(false)}
+                                disabled={savingWage}
+                                className="rounded-lg bg-slate-200 p-1.5 text-slate-600 transition-colors hover:bg-slate-300"
+                                title="Cancel"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={openWageEditor}
+                            className="inline-flex w-fit items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
+                            title="Click to edit daily wage"
+                        >
+                            <Wallet size={14} />
+                            Daily Wage: {formatPeso(report?.dailyWage || 435)}
+                            <Pencil size={12} className="text-amber-600" />
+                        </button>
+                    )}
                 </div>
 
                 {loading ? (

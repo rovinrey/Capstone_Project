@@ -4,31 +4,16 @@ import axios from "axios";
 import { AlertCircle } from "lucide-react";
 
 import WelcomeBanner from "../../components/Welcomebanner";
-import spesDocumentsApi, { type DocumentFieldId } from "../../api/spesDocuments.api";
-
-const REQUIREMENT_LABELS: Record<DocumentFieldId, string> = {
-    spes_form2: 'SPES Form 2',
-    spes_form2a: 'SPES Form 2A',
-    spes_form4: 'SPES Form 4',
-    passport_picture: 'Passport Size Picture',
-    birth_certificate: 'Birth Certificate',
-    certificate_of_indigency: 'Certificate of Indigency',
-    certificate_of_registration: 'Certificate of Registration',
-    certificate_of_grades: 'Certificate of Grades',
-    philjobnet_screenshot: 'PhilJobNet Registration Screenshot',
-};
-
-const REQUIREMENT_IDS = Object.keys(REQUIREMENT_LABELS) as DocumentFieldId[];
+import RequirementsSubmissionModule from "../../components/RequirementsSubmissionModule";
 
 function BeneficiaryDashboard() {
     const navigate = useNavigate();
     const [user, setUser] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [submittedRequirements, setSubmittedRequirements] = useState<DocumentFieldId[]>([]);
 
     useEffect(() => {
-        const fetchAllDashboardData = async () => {
+        const fetchDashboardData = async () => {
             const token = localStorage.getItem('token');
             const user_name = localStorage.getItem('user_name');
             const role = localStorage.getItem('role');
@@ -39,32 +24,11 @@ function BeneficiaryDashboard() {
             }
 
             try {
-                const [profileRes, docsRes] = await Promise.allSettled([
-                    axios.get(
-                        `http://localhost:5000/api/auth/getProfile?user_name=${user_name}`,
-                        { headers: { Authorization: `Bearer ${token}` } }
-                    ),
-                    spesDocumentsApi.getStatus(token),
-                ]);
-
-                if (profileRes.status === 'fulfilled') {
-                    setUser(profileRes.value.data);
-                } else {
-                    const status = profileRes.reason?.response?.status;
-                    if (status === 401 || status === 403) {
-                        localStorage.removeItem('token');
-                        navigate('/login');
-                        return;
-                    }
-                    setError('Unable to load profile data.');
-                }
-
-                if (docsRes.status === 'fulfilled') {
-                    const submitted = REQUIREMENT_IDS.filter((id) => Boolean(docsRes.value.documents[id]));
-                    setSubmittedRequirements(submitted);
-                } else {
-                    setSubmittedRequirements([]);
-                }
+                const profileRes = await axios.get(
+                    `http://localhost:5000/api/auth/getProfile`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setUser(profileRes.data);
             } catch (err: any) {
                 const status = err?.response?.status;
                 if (status === 401 || status === 403) {
@@ -78,12 +42,8 @@ function BeneficiaryDashboard() {
             }
         };
 
-        fetchAllDashboardData();
+        fetchDashboardData();
     }, [navigate]);
-
-    const totalRequirements = REQUIREMENT_IDS.length;
-    const submittedCount = submittedRequirements.length;
-    const progressPercent = Math.round((submittedCount / totalRequirements) * 100);
 
     if (loading) {
         return (
@@ -130,47 +90,8 @@ function BeneficiaryDashboard() {
 
             <main className="pb-8 md:pb-12 w-full px-1 sm:px-2 md:px-4 lg:px-8 max-w-7xl mx-auto mt-4">
                 <div className="bg-white p-4 sm:p-5 md:p-8 rounded-2xl shadow-sm border border-gray-200">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-                        <section className="lg:col-span-2 rounded-2xl border border-blue-100 bg-blue-50/50 p-4 sm:p-5">
-                            <h2 className="text-sm font-semibold text-blue-800 uppercase tracking-wider">SPES Progress</h2>
-                            <p className="mt-3 text-3xl font-black text-blue-900">{progressPercent}%</p>
-                            <p className="mt-1 text-sm text-blue-700">
-                                {submittedCount} of {totalRequirements} requirements submitted
-                            </p>
-                            <div className="mt-4 h-3 w-full rounded-full bg-blue-100 overflow-hidden">
-                                <div
-                                    className="h-3 rounded-full bg-blue-600 transition-all duration-500"
-                                    style={{ width: `${progressPercent}%` }}
-                                />
-                            </div>
-                            <p className="mt-3 text-xs text-blue-700">
-                                Example target: 70% means 6 to 7 out of 9 requirements submitted.
-                            </p>
-                        </section>
-
-                        <section className="lg:col-span-3 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
-                            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">Recently Submitted Requirements</h2>
-                            {submittedRequirements.length === 0 ? (
-                                <div className="mt-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
-                                    No submitted requirements yet.
-                                </div>
-                            ) : (
-                                <ul className="mt-4 space-y-2">
-                                    {submittedRequirements.map((id) => (
-                                        <li
-                                            key={id}
-                                            className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2"
-                                        >
-                                            <span className="text-sm font-medium text-emerald-800">{REQUIREMENT_LABELS[id]}</span>
-                                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                                                Submitted
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </section>
-                    </div>
+                    <h2 className="text-lg font-bold text-gray-900 mb-4">Requirements Submission Progress</h2>
+                    <RequirementsSubmissionModule compact />
                 </div>
             </main>
         </div>

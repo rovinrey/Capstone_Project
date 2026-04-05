@@ -272,7 +272,7 @@ exports.getUserApplicationStatus = async (userId) => {
 
   const [rows] = await db.execute(query, [userId]);
 
-  const supportedPrograms = ['TUPAD', 'SPES', 'DILP', 'GIP', 'Jobseeker'];
+  const supportedPrograms = ['tupad', 'spes', 'dilp', 'gip', 'job_seekers'];
   const summary = supportedPrograms.reduce((acc, program) => {
     acc[program] = null;
     return acc;
@@ -333,6 +333,43 @@ exports.getApplicationsForExport = async (programType = null, status = null) => 
   return rows;
 };
 
+// =============================================
+// Daily Wage Settings
+// =============================================
+exports.getDailyWage = async () => {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      setting_key VARCHAR(100) NOT NULL PRIMARY KEY,
+      setting_value TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+  const [rows] = await db.execute(
+    `SELECT setting_value FROM system_settings WHERE setting_key = 'tupad_daily_wage'`
+  );
+  return rows.length > 0 ? parseFloat(rows[0].setting_value) || 435 : 435;
+};
+
+exports.updateDailyWage = async (newWage) => {
+  const wage = parseFloat(newWage);
+  if (isNaN(wage) || wage <= 0) {
+    throw new Error('Daily wage must be a positive number');
+  }
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      setting_key VARCHAR(100) NOT NULL PRIMARY KEY,
+      setting_value TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+  await db.execute(
+    `INSERT INTO system_settings (setting_key, setting_value) VALUES ('tupad_daily_wage', ?)
+     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+    [String(wage)]
+  );
+  return wage;
+};
+
 exports.getTupadMonthlyReport = async (monthInput) => {
   const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
   const selectedMonth = monthRegex.test(String(monthInput || ''))
@@ -343,7 +380,19 @@ exports.getTupadMonthlyReport = async (monthInput) => {
   const [year, month] = selectedMonth.split('-').map(Number);
   const endDate = new Date(year, month, 0).toISOString().slice(0, 10);
   const endDateExpr = 'LAST_DAY(?)';
-  const DAILY_WAGE = 435;
+
+  // Read daily wage from system_settings (fallback to 435)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      setting_key VARCHAR(100) NOT NULL PRIMARY KEY,
+      setting_value TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+  const [wageRows] = await db.execute(
+    `SELECT setting_value FROM system_settings WHERE setting_key = 'tupad_daily_wage'`
+  );
+  const DAILY_WAGE = wageRows.length > 0 ? parseFloat(wageRows[0].setting_value) || 435 : 435;
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS attendance_records (
@@ -496,7 +545,7 @@ exports.adminAddBeneficiary = async (data) => {
   const {
     first_name, middle_name, last_name, extension_name,
     birth_date, gender, civil_status, contact_number, address,
-    program_type
+    program_type, program_details
   } = data;
 
   const connection = await db.getConnection();
@@ -535,6 +584,94 @@ exports.adminAddBeneficiary = async (data) => {
         [data.user_id || null, program_type]
       );
       applicationId = appResult.insertId;
+
+      // Insert program-specific details if provided
+      if (program_details && applicationId) {
+        const pd = program_details;
+
+        if (program_type === 'tupad') {
+          await connection.execute(
+            `INSERT INTO tupad_details
+              (application_id, valid_id_type, id_number, occupation, monthly_income, civil_status, work_category, job_preference, educational_attainment)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              applicationId,
+              pd.valid_id_type || null,
+              pd.id_number || null,
+              pd.occupation || null,
+              pd.monthly_income || null,
+              pd.civil_status || civil_status || null,
+              pd.work_category || null,
+              pd.job_preference || null,
+              pd.educational_attainment || null
+            ]
+          );
+        } else if (program_type === 'spes') {
+          await connection.execute(
+            `INSERT INTO spes_details
+              (application_id, place_of_birth, citizenship, social_media_account, civil_status, sex,
+               type_of_student, parent_status, father_name, father_occupation, father_contact,
+               mother_maiden_name, mother_occupation, mother_contact, education_level,
+               name_of_school, degree_earned_course, year_level, present_address, permanent_address)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              applicationId,
+              pd.place_of_birth || null,
+              pd.citizenship || 'Filipino',
+              pd.social_media_account || null,
+              pd.civil_status || civil_status || 'Single',
+              pd.sex || gender || 'Male',
+              pd.type_of_student || 'Student',
+              pd.parent_status || 'Living together',
+              pd.father_name || null,
+              pd.father_occupation || null,
+              pd.father_contact || null,
+              pd.mother_maiden_name || null,
+              pd.mother_occupation || null,
+              pd.mother_contact || null,
+              pd.education_level || 'Secondary',
+              pd.name_of_school || null,
+              pd.degree_earned_course || null,
+              pd.year_level || null,
+              pd.present_address || address,
+              pd.permanent_address || address
+            ]
+          );
+        } else if (program_type === 'dilp') {
+          await connection.execute(
+            `INSERT INTO dilp_applications
+              (proponent_name, sex, civil_status, date_of_birth, email,
+               project_title, project_type, category, proposed_amount,
+               location, barangay, city, province, contact_person, contact_number,
+               business_experience, estimated_monthly_income, number_of_beneficiaries,
+               skills_training, valid_id_number, brief_description)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              pd.proponent_name || `${first_name} ${last_name}`,
+              pd.sex || gender || null,
+              pd.civil_status || civil_status || null,
+              pd.date_of_birth || birth_date || null,
+              pd.email || null,
+              pd.project_title || '',
+              pd.project_type || 'Individual',
+              pd.category || 'Formation',
+              pd.proposed_amount || 0,
+              pd.location || null,
+              pd.barangay || null,
+              pd.city || null,
+              pd.province || null,
+              pd.contact_person || null,
+              pd.contact_number || contact_number || '',
+              pd.business_experience || null,
+              pd.estimated_monthly_income || 0,
+              pd.number_of_beneficiaries || 0,
+              pd.skills_training || null,
+              pd.valid_id_number || null,
+              pd.brief_description || null
+            ]
+          );
+        }
+      }
     }
 
     await connection.commit();
@@ -691,4 +828,276 @@ exports.getAllBeneficiariesForAdmin = async () => {
   `;
   const [rows] = await db.execute(query);
   return rows;
+};
+
+// ── Duplicate Detection ──────────────────────────────
+
+/**
+ * Detect potential duplicate applications.
+ * Criteria:
+ *  1. Same user_id applying to the same program_type more than once
+ *  2. Different user_ids but matching beneficiary (first_name + last_name + birth_date)
+ *     applying to the same program
+ */
+exports.detectDuplicates = async () => {
+  // Group 1: Same user applying to the same program more than once
+  const sameUserQuery = `
+    SELECT
+      a.application_id,
+      a.user_id,
+      a.program_type,
+      a.status,
+      a.is_duplicate,
+      a.duplicate_notes,
+      a.applied_at,
+      b.first_name,
+      b.middle_name,
+      b.last_name,
+      b.birth_date,
+      b.contact_number,
+      b.address,
+      u.email,
+      'same_user_program' AS duplicate_type
+    FROM applications a
+    LEFT JOIN beneficiaries b ON b.user_id = a.user_id
+    LEFT JOIN users u ON u.user_id = a.user_id
+    WHERE a.user_id IN (
+      SELECT user_id FROM applications
+      GROUP BY user_id, program_type
+      HAVING COUNT(*) > 1
+    )
+    ORDER BY a.user_id, a.program_type, a.applied_at
+  `;
+
+  // Group 2: Different users with matching name + birth_date applying to same program
+  const samePersonQuery = `
+    SELECT
+      a.application_id,
+      a.user_id,
+      a.program_type,
+      a.status,
+      a.is_duplicate,
+      a.duplicate_notes,
+      a.applied_at,
+      b.first_name,
+      b.middle_name,
+      b.last_name,
+      b.birth_date,
+      b.contact_number,
+      b.address,
+      u.email,
+      'same_person_different_account' AS duplicate_type
+    FROM applications a
+    INNER JOIN beneficiaries b ON b.user_id = a.user_id
+    LEFT JOIN users u ON u.user_id = a.user_id
+    WHERE EXISTS (
+      SELECT 1 FROM applications a2
+      INNER JOIN beneficiaries b2 ON b2.user_id = a2.user_id
+      WHERE LOWER(b2.first_name) = LOWER(b.first_name)
+        AND LOWER(b2.last_name) = LOWER(b.last_name)
+        AND b2.birth_date = b.birth_date
+        AND a2.user_id != a.user_id
+        AND a2.program_type = a.program_type
+    )
+    ORDER BY b.last_name, b.first_name, a.program_type, a.applied_at
+  `;
+
+  const [sameUser] = await db.execute(sameUserQuery);
+  const [samePerson] = await db.execute(samePersonQuery);
+
+  // Merge and deduplicate by application_id
+  const seen = new Set();
+  const all = [];
+  for (const row of [...sameUser, ...samePerson]) {
+    if (!seen.has(row.application_id)) {
+      seen.add(row.application_id);
+      all.push(row);
+    }
+  }
+  return all;
+};
+
+/**
+ * Get all applications that have been manually marked as duplicate.
+ */
+exports.getMarkedDuplicates = async () => {
+  const query = `
+    SELECT
+      a.application_id,
+      a.user_id,
+      a.program_type,
+      a.status,
+      a.is_duplicate,
+      a.duplicate_notes,
+      a.applied_at,
+      b.first_name,
+      b.middle_name,
+      b.last_name,
+      b.birth_date,
+      b.contact_number,
+      b.address,
+      u.email
+    FROM applications a
+    LEFT JOIN beneficiaries b ON b.user_id = a.user_id
+    LEFT JOIN users u ON u.user_id = a.user_id
+    WHERE a.is_duplicate = 1
+    ORDER BY a.applied_at DESC
+  `;
+  const [rows] = await db.execute(query);
+  return rows;
+};
+
+/**
+ * Mark an application as duplicate.
+ */
+exports.markAsDuplicate = async (applicationId, notes) => {
+  const query = `
+    UPDATE applications
+    SET is_duplicate = 1, duplicate_notes = ?
+    WHERE application_id = ?
+  `;
+  const [result] = await db.execute(query, [notes || null, applicationId]);
+  return result;
+};
+
+/**
+ * Unmark an application (clear duplicate flag).
+ */
+exports.unmarkDuplicate = async (applicationId) => {
+  const query = `
+    UPDATE applications
+    SET is_duplicate = 0, duplicate_notes = NULL
+    WHERE application_id = ?
+  `;
+  const [result] = await db.execute(query, [applicationId]);
+  return result;
+};
+
+/**
+ * Resolve a duplicate by rejecting it.
+ */
+exports.resolveDuplicate = async (applicationId, action) => {
+  if (action === 'reject') {
+    const query = `
+      UPDATE applications
+      SET status = 'Rejected', rejection_reason = 'Duplicate application', is_duplicate = 1
+      WHERE application_id = ?
+    `;
+    const [result] = await db.execute(query, [applicationId]);
+    return result;
+  }
+  // 'keep' action — just unmark it
+  return exports.unmarkDuplicate(applicationId);
+};
+
+// ── Duplicate Beneficiaries ──────────────────────────
+/**
+ * Detect duplicate beneficiary records with similar names & birth dates.
+ * Groups beneficiaries that share (lowercase first_name, lowercase last_name, birth_date).
+ */
+exports.detectDuplicateBeneficiaries = async () => {
+  const query = `
+    SELECT
+      b.beneficiary_id,
+      b.user_id,
+      b.first_name,
+      b.middle_name,
+      b.last_name,
+      b.extension_name,
+      b.birth_date,
+      b.gender,
+      b.civil_status,
+      b.contact_number,
+      b.address,
+      b.is_active,
+      u.email,
+      u.user_name
+    FROM beneficiaries b
+    LEFT JOIN users u ON u.user_id = b.user_id
+    WHERE EXISTS (
+      SELECT 1 FROM beneficiaries b2
+      WHERE b2.beneficiary_id != b.beneficiary_id
+        AND LOWER(TRIM(b2.first_name)) = LOWER(TRIM(b.first_name))
+        AND LOWER(TRIM(b2.last_name)) = LOWER(TRIM(b.last_name))
+    )
+    ORDER BY LOWER(b.last_name), LOWER(b.first_name), b.birth_date
+  `;
+  const [rows] = await db.execute(query);
+  return rows;
+};
+
+/**
+ * Delete a beneficiary record (admin action for resolving duplicates).
+ */
+exports.deleteBeneficiaryById = async (beneficiaryId) => {
+  // Remove related attendance first
+  await db.execute(
+    'DELETE FROM attendance WHERE beneficiary_id = ?',
+    [beneficiaryId]
+  );
+  const [result] = await db.execute(
+    'DELETE FROM beneficiaries WHERE beneficiary_id = ?',
+    [beneficiaryId]
+  );
+  return result;
+};
+
+// ── Duplicate Attendance ─────────────────────────────
+/**
+ * Detect attendance records that might be duplicates:
+ * Same beneficiary (by name+birth_date across user accounts) attending on the same date.
+ */
+exports.detectDuplicateAttendance = async () => {
+  const query = `
+    SELECT
+      ar.attendance_id,
+      ar.user_id,
+      ar.program_type,
+      ar.attendance_date,
+      ar.time_in,
+      ar.time_out,
+      ar.status AS attendance_status,
+      COALESCE(
+        NULLIF(TRIM(CONCAT_WS(' ', b.first_name, b.middle_name, b.last_name)), ''),
+        u.user_name
+      ) AS beneficiary_name,
+      b.first_name,
+      b.last_name,
+      b.birth_date,
+      u.email
+    FROM attendance_records ar
+    LEFT JOIN users u ON u.user_id = ar.user_id
+    LEFT JOIN beneficiaries b ON b.user_id = ar.user_id
+    WHERE EXISTS (
+      SELECT 1
+      FROM attendance_records ar2
+      LEFT JOIN beneficiaries b2 ON b2.user_id = ar2.user_id
+      WHERE ar2.attendance_id != ar.attendance_id
+        AND ar2.attendance_date = ar.attendance_date
+        AND (
+          ar2.user_id = ar.user_id
+          OR (
+            b2.beneficiary_id IS NOT NULL AND b.beneficiary_id IS NOT NULL
+            AND LOWER(TRIM(b2.first_name)) = LOWER(TRIM(b.first_name))
+            AND LOWER(TRIM(b2.last_name)) = LOWER(TRIM(b.last_name))
+            AND b2.birth_date = b.birth_date
+            AND ar2.user_id != ar.user_id
+          )
+        )
+    )
+    ORDER BY ar.attendance_date DESC, COALESCE(b.last_name, u.user_name)
+  `;
+  const [rows] = await db.execute(query);
+  return rows;
+};
+
+/**
+ * Delete an attendance record by ID.
+ */
+exports.deleteAttendanceRecord = async (attendanceId) => {
+  const [result] = await db.execute(
+    'DELETE FROM attendance_records WHERE attendance_id = ?',
+    [attendanceId]
+  );
+  return result;
 };

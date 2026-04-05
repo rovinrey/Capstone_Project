@@ -6,7 +6,7 @@ import {
   CreditCard, 
   ClipboardList, 
   BarChart3, 
-  LogOut 
+  LogOut
 } from 'lucide-react';
 import { logout as clearAuth } from '../utils/auth';
 

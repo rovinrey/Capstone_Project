@@ -34,8 +34,8 @@ exports.createTupadDetails = async (connection, data) => {
 exports.createBeneficiary = async (connection, data) => {
     await connection.query(
         `INSERT INTO beneficiaries 
-        (user_id, first_name, middle_name, last_name, birth_date, gender, contact_number)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (user_id, first_name, middle_name, last_name, birth_date, gender, contact_number, address)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             data.user_id,
             data.first_name,
@@ -43,7 +43,8 @@ exports.createBeneficiary = async (connection, data) => {
             data.last_name,
             data.birth_date,
             data.gender,
-            data.contact_number
+            data.contact_number,
+            data.address
         ]
     );
 };

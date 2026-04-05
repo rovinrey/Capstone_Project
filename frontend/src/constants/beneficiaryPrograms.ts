@@ -16,7 +16,7 @@ export const BENEFICIARY_PROGRAMS: BeneficiaryProgramDefinition[] = [
         label: 'TUPAD — Emergency Employment',
         short_label: 'TUPAD',
         description: 'Emergency employment assistance for displaced, underemployed, and seasonal workers.',
-        has_requirements_submitter: false,
+        has_requirements_submitter: true,
     },
     {
         value: 'SPES',
@@ -30,21 +30,21 @@ export const BENEFICIARY_PROGRAMS: BeneficiaryProgramDefinition[] = [
         label: 'DILP — Livelihood Program',
         short_label: 'DILP',
         description: 'Livelihood assistance program for beneficiaries building sustainable income sources.',
-        has_requirements_submitter: false,
+        has_requirements_submitter: true,
     },
     {
         value: 'GIP',
         label: 'GIP — Government Internship Program',
         short_label: 'GIP',
         description: 'Internship placement for young workers in government offices and partner institutions.',
-        has_requirements_submitter: false,
+        has_requirements_submitter: true,
     },
     {
         value: 'JOBSEEKERS',
         label: 'Job Seekers Assistance',
         short_label: 'Job Seekers',
         description: 'Employment assistance and intake support for job seekers and placement applicants.',
-        has_requirements_submitter: false,
+        has_requirements_submitter: true,
     },
 ];
 

@@ -43,7 +43,8 @@ exports.applyTupad = async (data) => {
             last_name: data.last_name,
             birth_date: data.date_of_birth,
             gender: data.gender,
-            contact_number: data.contact_number
+            contact_number: data.contact_number,
+            address: data.address || ''
         });
 
         await connection.commit();
@@ -67,4 +68,37 @@ exports.approveTupadApplication = async (applicationId) => {
         throw new Error('Application not found');
     }
     return result;
+};
+
+// Get TUPAD details by application ID
+exports.getTupadDetails = async (applicationId) => {
+    const [rows] = await db.execute(
+        'SELECT * FROM tupad_details WHERE application_id = ? LIMIT 1',
+        [applicationId]
+    );
+    return rows[0] || null;
+};
+
+// Update TUPAD details by detail_id
+exports.updateTupadDetails = async (detailId, data) => {
+    const query = `
+        UPDATE tupad_details SET
+            valid_id_type = ?, id_number = ?, occupation = ?,
+            monthly_income = ?, civil_status = ?, work_category = ?,
+            job_preference = ?, educational_attainment = ?
+        WHERE detail_id = ?
+    `;
+    const values = [
+        data.valid_id_type || null,
+        data.id_number || null,
+        data.occupation || null,
+        data.monthly_income || null,
+        data.civil_status || null,
+        data.work_category || null,
+        data.job_preference || null,
+        data.educational_attainment || null,
+        detailId
+    ];
+    const [result] = await db.execute(query, values);
+    return { success: true, affectedRows: result.affectedRows };
 };

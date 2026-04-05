@@ -28,3 +28,22 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+.node_modules
+
+dist/
+build/
+.next/
+out/
+
+# Vite/TS Metadata
+.vite/
+tsconfig.tsbuildinfo
+
+# Ignore all SQL files in the config folder
+backend/src/config/*.sql
+
+# Ignore the database connection file if it has passwords
+backend/src/config/db.js
+
+# Always ignore node_modules
+node_modules/

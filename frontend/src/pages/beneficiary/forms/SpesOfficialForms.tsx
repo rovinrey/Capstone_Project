@@ -1,23 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 export type SpesOfficialFormKey = 'form2' | 'form2a' | 'form4';
 
 // spes form 2 - personal info, family background, educational background
 interface Form2Data {
+    // personal info
+    // passport size picture is required
     first_name: string;
     middle_name: string;
     last_name: string;
     birth_date: string;
     place_of_birth: string;
+    citizenship: string;
     sex: string;
     civil_status: string;
     contact_number: string;
     email_address: string;
     present_address: string;
     permanent_address: string;
-    citizenship: string;
+    gsis_beneficiary: string;
     social_media: string;
     type_of_student: string;
     parent_status: string;
@@ -28,16 +31,11 @@ interface Form2Data {
 }
 
 interface Form2AData {
-    father_name: string;
-    father_occupation: string;
-    father_contact: string;
-    mother_name: string;
-    mother_occupation: string;
-    mother_contact: string;
-    monthly_family_income: string;
-    household_members: string;
-    is_4ps_beneficiary: string;
-    indigency_status: string;
+    applicant_full_name: string;
+    parent_guardian_name: string;
+    relationship: string;
+    oath_agreed: boolean;
+    oath_date: string;
 }
 
 interface Form4Data {
@@ -79,6 +77,7 @@ function SpesOfficialForms() {
         middle_name: '',
         last_name: '',
         birth_date: '',
+        gsis_beneficiary: '',
         place_of_birth: '',
         sex: '',
         civil_status: '',
@@ -97,16 +96,11 @@ function SpesOfficialForms() {
     });
 
     const [form_2a, set_form_2a] = useState<Form2AData>({
-        father_name: '',
-        father_occupation: '',
-        father_contact: '',
-        mother_name: '',
-        mother_occupation: '',
-        mother_contact: '',
-        monthly_family_income: '',
-        household_members: '',
-        is_4ps_beneficiary: 'No',
-        indigency_status: 'Yes',
+        applicant_full_name: '',
+        parent_guardian_name: '',
+        relationship: '',
+        oath_agreed: false,
+        oath_date: new Date().toISOString().slice(0, 10),
     });
 
     const [form_4, set_form_4] = useState<Form4Data>({
@@ -123,7 +117,7 @@ function SpesOfficialForms() {
     const tabs = useMemo(
         () => [
             { key: 'form2' as SpesOfficialFormKey, label: 'SPES Form 2' },
-            { key: 'form2a' as SpesOfficialFormKey, label: 'SPES Form 2A' },
+            { key: 'form2a' as SpesOfficialFormKey, label: 'SPES Form 2-A' },
             { key: 'form4' as SpesOfficialFormKey, label: 'SPES Form 4' },
         ],
         []
@@ -164,10 +158,11 @@ function SpesOfficialForms() {
     );
 
     const is_form_2a_complete = Boolean(
-        form_2a.father_name.trim() &&
-            form_2a.mother_name.trim() &&
-            form_2a.monthly_family_income.trim() &&
-            form_2a.household_members.trim()
+        form_2a.applicant_full_name.trim() &&
+            form_2a.parent_guardian_name.trim() &&
+            form_2a.relationship.trim() &&
+            form_2a.oath_agreed &&
+            form_2a.oath_date
     );
 
     const is_form_4_complete = Boolean(
@@ -194,8 +189,13 @@ function SpesOfficialForms() {
 
     const submit_form_2a = (event: React.FormEvent) => {
         event.preventDefault();
+        if (!form_2a.oath_agreed) {
+            set_submit_state('error');
+            set_submit_message('You must agree to the Oath of Undertaking to proceed.');
+            return;
+        }
         set_submit_state('idle');
-        set_submit_message('SPES Form 2A draft saved. Continue to Form 4.');
+        set_submit_message('SPES Form 2-A (Oath of Undertaking) saved. Continue to Form 4.');
         set_active_form('form4');
     };
 
@@ -230,12 +230,12 @@ function SpesOfficialForms() {
                 sex: form_2.sex,
                 type_of_student: form_2.type_of_student,
                 parent_status: form_2.parent_status,
-                father_name: form_2a.father_name,
-                father_occupation: form_2a.father_occupation,
-                father_contact: form_2a.father_contact,
-                mother_maiden_name: form_2a.mother_name,
-                mother_occupation: form_2a.mother_occupation,
-                mother_contact: form_2a.mother_contact,
+                father_name: form_2a.parent_guardian_name,
+                father_occupation: '',
+                father_contact: '',
+                mother_maiden_name: '',
+                mother_occupation: '',
+                mother_contact: '',
                 education_level: form_2.education_level,
                 name_of_school: form_2.school_name,
                 degree_earned_course: form_2.course_or_track,
@@ -252,10 +252,11 @@ function SpesOfficialForms() {
                     email_address: form_2.email_address,
                 },
                 form2a_meta: {
-                    monthly_family_income: form_2a.monthly_family_income,
-                    household_members: form_2a.household_members,
-                    is_4ps_beneficiary: form_2a.is_4ps_beneficiary,
-                    indigency_status: form_2a.indigency_status,
+                    applicant_full_name: form_2a.applicant_full_name,
+                    parent_guardian_name: form_2a.parent_guardian_name,
+                    relationship: form_2a.relationship,
+                    oath_agreed: form_2a.oath_agreed,
+                    oath_date: form_2a.oath_date,
                 },
                 form4_meta: {
                     applicant_name: form_4.applicant_name,
@@ -269,7 +270,8 @@ function SpesOfficialForms() {
                 },
             };
 
-            const response = await fetch('http://localhost:5000/api/forms/apply/spes', {
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${API_BASE_URL}/api/forms/apply/spes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -306,7 +308,7 @@ function SpesOfficialForms() {
                 )}
                 <header className="mb-6">
                     <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">SPES Official Forms</h1>
-                    <p className="text-slate-600 mt-1 text-sm">Complete SPES Form 2, Form 2A, and Form 4 below.</p>
+                    <p className="text-slate-500 mt-1 text-sm">Complete SPES Form 2, Form 2A, and Form 4 below.</p>
                 </header>
 
                 <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -335,25 +337,31 @@ function SpesOfficialForms() {
                 )}
 
                 <div className="flex gap-1 rounded-xl bg-slate-100 p-1 mb-6 w-full sm:w-auto sm:inline-flex">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.key}
-                            type="button"
-                            onClick={() => set_active_form(tab.key)}
-                            className={`flex-1 sm:flex-none rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
-                                active_form === tab.key ? tab_styles.active : tab_styles.idle
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+                    {tabs.map((tab, idx) => {
+                        const is_complete = idx === 0 ? is_form_2_complete : idx === 1 ? is_form_2a_complete : is_form_4_complete;
+                        return (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                onClick={() => set_active_form(tab.key)}
+                                className={`flex-1 sm:flex-none rounded-lg px-4 py-2 text-xs font-semibold transition-all inline-flex items-center gap-1.5 ${
+                                    active_form === tab.key ? tab_styles.active : tab_styles.idle
+                                }`}
+                            >
+                                {is_complete && <CheckCircle2 size={13} className="text-emerald-500" />}
+                                {tab.label}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {active_form === 'form2' && (
                     <form className="space-y-6" onSubmit={submit_form_2}>
                         <section>
-                            <h2 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-200 pb-2">Form 2: Personal Information</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <h2 className="text-lg font-bold text-slate-900 mb-1">Form 2: Personal Information</h2>
+                            <p className="text-xs text-slate-400 mb-5">Fields marked with * are required.</p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className={label_style}>First Name *</label>
                                     <input required value={form_2.first_name} onChange={(e) => set_form_2((prev) => ({ ...prev, first_name: e.target.value }))} className={input_style} />
@@ -367,7 +375,8 @@ function SpesOfficialForms() {
                                     <input required value={form_2.last_name} onChange={(e) => set_form_2((prev) => ({ ...prev, last_name: e.target.value }))} className={input_style} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mt-5">
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <label className={label_style}>Birth Date *</label>
                                     <input type="date" required value={form_2.birth_date} onChange={(e) => set_form_2((prev) => ({ ...prev, birth_date: e.target.value }))} className={input_style} />
@@ -376,6 +385,13 @@ function SpesOfficialForms() {
                                     <label className={label_style}>Place of Birth *</label>
                                     <input required value={form_2.place_of_birth} onChange={(e) => set_form_2((prev) => ({ ...prev, place_of_birth: e.target.value }))} className={input_style} />
                                 </div>
+                                <div>
+                                    <label className={label_style}>Citizenship</label>
+                                    <input value={form_2.citizenship} onChange={(e) => set_form_2((prev) => ({ ...prev, citizenship: e.target.value }))} className={input_style} />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <label className={label_style}>Sex *</label>
                                     <select required value={form_2.sex} onChange={(e) => set_form_2((prev) => ({ ...prev, sex: e.target.value }))} className={input_style}>
@@ -396,25 +412,30 @@ function SpesOfficialForms() {
                                 </div>
                                 <div>
                                     <label className={label_style}>Contact Number *</label>
-                                    <input required value={form_2.contact_number} onChange={(e) => set_form_2((prev) => ({ ...prev, contact_number: e.target.value }))} className={input_style} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
-                                <div>
-                                    <label className={label_style}>Email Address</label>
-                                    <input type="email" value={form_2.email_address} onChange={(e) => set_form_2((prev) => ({ ...prev, email_address: e.target.value }))} className={input_style} />
-                                </div>
-                                <div>
-                                    <label className={label_style}>Citizenship</label>
-                                    <input value={form_2.citizenship} onChange={(e) => set_form_2((prev) => ({ ...prev, citizenship: e.target.value }))} className={input_style} />
-                                </div>
-                                <div>
-                                    <label className={label_style}>Social Media</label>
-                                    <input value={form_2.social_media} onChange={(e) => set_form_2((prev) => ({ ...prev, social_media: e.target.value }))} className={input_style} />
+                                    <input required placeholder="09xxxxxxxxx" value={form_2.contact_number} onChange={(e) => set_form_2((prev) => ({ ...prev, contact_number: e.target.value }))} className={input_style} />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                <div>
+                                    <label className={label_style}>Email Address</label>
+                                    <input type="email" placeholder="you@email.com" value={form_2.email_address} onChange={(e) => set_form_2((prev) => ({ ...prev, email_address: e.target.value }))} className={input_style} />
+                                </div>
+                                <div>
+                                    <label className={label_style}>Social Media</label>
+                                    <input placeholder="Facebook, etc." value={form_2.social_media} onChange={(e) => set_form_2((prev) => ({ ...prev, social_media: e.target.value }))} className={input_style} />
+                                </div>
+                                <div>
+                                    <label className={label_style}>GSIS Beneficiary</label>
+                                    <select value={form_2.gsis_beneficiary} onChange={(e) => set_form_2((prev) => ({ ...prev, gsis_beneficiary: e.target.value }))} className={input_style}>
+                                        <option value="">Select...</option>
+                                        <option value="Yes">Yes</option>
+                                        <option value="No">No</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                 <div>
                                     <label className={label_style}>Present Address *</label>
                                     <input required value={form_2.present_address} onChange={(e) => set_form_2((prev) => ({ ...prev, present_address: e.target.value }))} className={input_style} />
@@ -424,8 +445,13 @@ function SpesOfficialForms() {
                                     <input required value={form_2.permanent_address} onChange={(e) => set_form_2((prev) => ({ ...prev, permanent_address: e.target.value }))} className={input_style} />
                                 </div>
                             </div>
+                        </section>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
+                        <section>
+                            <h2 className="text-lg font-bold text-slate-900 mb-1">Educational Background</h2>
+                            <p className="text-xs text-slate-400 mb-5">Student classification and school details.</p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className={label_style}>Type of Student *</label>
                                     <select value={form_2.type_of_student} onChange={(e) => set_form_2((prev) => ({ ...prev, type_of_student: e.target.value }))} className={input_style}>
@@ -453,7 +479,7 @@ function SpesOfficialForms() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <label className={label_style}>School Name *</label>
                                     <input required value={form_2.school_name} onChange={(e) => set_form_2((prev) => ({ ...prev, school_name: e.target.value }))} className={input_style} />
@@ -479,66 +505,105 @@ function SpesOfficialForms() {
                 {active_form === 'form2a' && (
                     <form className="space-y-6" onSubmit={submit_form_2a}>
                         <section>
-                            <h2 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-200 pb-2">Form 2A: Family and Income Information</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div>
-                                    <label className={label_style}>Father's Name *</label>
-                                    <input required value={form_2a.father_name} onChange={(e) => set_form_2a((prev) => ({ ...prev, father_name: e.target.value }))} className={input_style} />
-                                </div>
-                                <div>
-                                    <label className={label_style}>Father's Occupation</label>
-                                    <input value={form_2a.father_occupation} onChange={(e) => set_form_2a((prev) => ({ ...prev, father_occupation: e.target.value }))} className={input_style} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
-                                <div>
-                                    <label className={label_style}>Mother's Name *</label>
-                                    <input required value={form_2a.mother_name} onChange={(e) => set_form_2a((prev) => ({ ...prev, mother_name: e.target.value }))} className={input_style} />
-                                </div>
-                                <div>
-                                    <label className={label_style}>Mother's Occupation</label>
-                                    <input value={form_2a.mother_occupation} onChange={(e) => set_form_2a((prev) => ({ ...prev, mother_occupation: e.target.value }))} className={input_style} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
-                                <div>
-                                    <label className={label_style}>Father's Contact</label>
-                                    <input value={form_2a.father_contact} onChange={(e) => set_form_2a((prev) => ({ ...prev, father_contact: e.target.value }))} className={input_style} />
-                                </div>
-                                <div>
-                                    <label className={label_style}>Mother's Contact</label>
-                                    <input value={form_2a.mother_contact} onChange={(e) => set_form_2a((prev) => ({ ...prev, mother_contact: e.target.value }))} className={input_style} />
+                            <h2 className="text-lg font-bold text-slate-900 mb-1">Form 2-A: Oath of Undertaking</h2>
+                            <p className="text-xs text-slate-400 mb-5">Read the oath carefully and provide the required information below.</p>
+
+                            <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 md:p-6 mb-6">
+                                <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-3">Oath of Undertaking</h3>
+                                <div className="space-y-3 text-sm leading-relaxed text-slate-700">
+                                    <p>
+                                        I, <strong className="text-slate-900 underline underline-offset-4 decoration-blue-300">{form_2a.applicant_full_name || '________________________'}</strong>, hereby apply for enrollment under the <strong>Special Program for the Employment of Students (SPES)</strong> pursuant to Republic Act No. 7323, as amended by Republic Act No. 10917.
+                                    </p>
+                                    <p>
+                                        I understand that if accepted, I shall be employed for a period not exceeding twenty (20) working days during school vacation or any time school is not in session, at a wage rate not less than the prevailing minimum wage.
+                                    </p>
+                                    <p>
+                                        I hereby certify that all information provided in my SPES application forms are true and correct to the best of my knowledge. I further understand that any misrepresentation shall be a ground for disqualification or termination from the program.
+                                    </p>
+                                    <p>
+                                        I give my consent to the collection, use, and processing of my personal information as required under the <strong>Data Privacy Act of 2012 (R.A. 10173)</strong> for purposes related to the SPES program.
+                                    </p>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className={label_style}>Monthly Family Income *</label>
-                                    <input required type="number" min="0" value={form_2a.monthly_family_income} onChange={(e) => set_form_2a((prev) => ({ ...prev, monthly_family_income: e.target.value }))} className={input_style} />
+                                    <label className={label_style}>Applicant Full Name *</label>
+                                    <input
+                                        required
+                                        placeholder="Juan A. Dela Cruz"
+                                        value={form_2a.applicant_full_name}
+                                        onChange={(e) => set_form_2a((prev) => ({ ...prev, applicant_full_name: e.target.value }))}
+                                        className={input_style}
+                                    />
                                 </div>
                                 <div>
-                                    <label className={label_style}>Number of Household Members *</label>
-                                    <input required type="number" min="1" value={form_2a.household_members} onChange={(e) => set_form_2a((prev) => ({ ...prev, household_members: e.target.value }))} className={input_style} />
+                                    <label className={label_style}>Date *</label>
+                                    <input
+                                        required
+                                        type="date"
+                                        value={form_2a.oath_date}
+                                        onChange={(e) => set_form_2a((prev) => ({ ...prev, oath_date: e.target.value }))}
+                                        className={input_style}
+                                    />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
-                                <div>
-                                    <label className={label_style}>4Ps Beneficiary *</label>
-                                    <select value={form_2a.is_4ps_beneficiary} onChange={(e) => set_form_2a((prev) => ({ ...prev, is_4ps_beneficiary: e.target.value }))} className={input_style}>
-                                        <option value="Yes">Yes</option>
-                                        <option value="No">No</option>
-                                    </select>
+
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 md:p-6 mt-6">
+                                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-3">Parent / Guardian Conformity</h3>
+                                <p className="text-sm text-slate-600 mb-4">
+                                    I, the undersigned parent/guardian, give my full consent to the above-named applicant to participate in the SPES program.
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={label_style}>Parent / Guardian Full Name *</label>
+                                        <input
+                                            required
+                                            placeholder="Maria B. Dela Cruz"
+                                            value={form_2a.parent_guardian_name}
+                                            onChange={(e) => set_form_2a((prev) => ({ ...prev, parent_guardian_name: e.target.value }))}
+                                            className={input_style}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={label_style}>Relationship to Applicant *</label>
+                                        <select
+                                            required
+                                            value={form_2a.relationship}
+                                            onChange={(e) => set_form_2a((prev) => ({ ...prev, relationship: e.target.value }))}
+                                            className={input_style}
+                                        >
+                                            <option value="">Select...</option>
+                                            <option value="Mother">Mother</option>
+                                            <option value="Father">Father</option>
+                                            <option value="Legal Guardian">Legal Guardian</option>
+                                            <option value="Sibling">Sibling</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className={label_style}>Has Certificate of Indigency *</label>
-                                    <select value={form_2a.indigency_status} onChange={(e) => set_form_2a((prev) => ({ ...prev, indigency_status: e.target.value }))} className={input_style}>
-                                        <option value="Yes">Yes</option>
-                                        <option value="No">No</option>
-                                    </select>
-                                </div>
+                            </div>
+
+                            <div className="mt-6">
+                                <label className="flex items-start gap-3 cursor-pointer select-none rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:bg-slate-50">
+                                    <input
+                                        type="checkbox"
+                                        checked={form_2a.oath_agreed}
+                                        onChange={(e) => set_form_2a((prev) => ({ ...prev, oath_agreed: e.target.checked }))}
+                                        className="mt-0.5 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600"
+                                    />
+                                    <span className="text-sm text-slate-700">
+                                        I have read and understood the above Oath of Undertaking. I certify that all the information I have provided is true and correct, and I agree to the terms and conditions of the SPES program. <span className="text-red-500 font-semibold">*</span>
+                                    </span>
+                                </label>
                             </div>
                         </section>
                         <div className="flex justify-end">
-                            <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white tracking-wide transition-all hover:bg-black active:scale-[0.99]">
+                            <button
+                                type="submit"
+                                disabled={!form_2a.oath_agreed}
+                                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white tracking-wide transition-all hover:bg-black active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 Save and Continue to Form 4
                             </button>
                         </div>
@@ -548,8 +613,9 @@ function SpesOfficialForms() {
                 {active_form === 'form4' && (
                     <form className="space-y-6" onSubmit={submit_form_4}>
                         <section>
-                            <h2 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-200 pb-2">Form 4: Work Assignment and Endorsement</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <h2 className="text-lg font-bold text-slate-900 mb-1">Form 4: Work Assignment and Endorsement</h2>
+                            <p className="text-xs text-slate-400 mb-5">Details of your assigned workplace and schedule.</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className={label_style}>Applicant Name *</label>
                                     <input required value={form_4.applicant_name} onChange={(e) => set_form_4((prev) => ({ ...prev, applicant_name: e.target.value }))} className={input_style} />
@@ -559,11 +625,11 @@ function SpesOfficialForms() {
                                     <input required value={form_4.assigned_office} onChange={(e) => set_form_4((prev) => ({ ...prev, assigned_office: e.target.value }))} className={input_style} />
                                 </div>
                             </div>
-                            <div className="mt-5">
+                            <div className="mt-4">
                                 <label className={label_style}>Work Assignment *</label>
                                 <input required value={form_4.work_assignment} onChange={(e) => set_form_4((prev) => ({ ...prev, work_assignment: e.target.value }))} className={input_style} />
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                 <div>
                                     <label className={label_style}>Supervisor Name *</label>
                                     <input required value={form_4.supervisor_name} onChange={(e) => set_form_4((prev) => ({ ...prev, supervisor_name: e.target.value }))} className={input_style} />
@@ -573,7 +639,7 @@ function SpesOfficialForms() {
                                     <input required value={form_4.supervisor_contact} onChange={(e) => set_form_4((prev) => ({ ...prev, supervisor_contact: e.target.value }))} className={input_style} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <label className={label_style}>Start Date *</label>
                                     <input required type="date" value={form_4.start_date} onChange={(e) => set_form_4((prev) => ({ ...prev, start_date: e.target.value }))} className={input_style} />

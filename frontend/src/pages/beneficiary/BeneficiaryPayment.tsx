@@ -19,7 +19,7 @@ function BeneficiaryPayment() {
             }
 
             try {
-                const response = await axios.get(`http://localhost:5000/api/auth/getProfile?user_name=${user_name}`, {
+                const response = await axios.get(`http://localhost:5000/api/auth/getProfile`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 setUser(response.data);
