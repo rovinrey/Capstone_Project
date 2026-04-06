@@ -32,8 +32,8 @@ const signup = async (body) => {
         throw error;
     }
 
-    if (user_name.length < 2 || user_name.length > 50) {
-        const error = new Error('Username must be between 2 and 50 characters');
+    if (user_name.length < 2 || user_name.length > 100) {
+        const error = new Error('Username must be between 2 and 100 characters');
         error.statusCode = 400;
         throw error;
     }

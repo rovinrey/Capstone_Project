@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const NAME_REGEX = /^[a-zA-Z\s.\-']+$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 function SignupPage() {
     const navigate = useNavigate();
@@ -41,8 +42,8 @@ function SignupPage() {
             return "Full name contains invalid characters.";
         }
 
-        if (formData.password.length < 8) {
-            return "Password must be at least 8 characters long.";
+        if (!PASSWORD_REGEX.test(formData.password)) {
+            return "Password must be at least 8 characters with uppercase, lowercase, number, and special character.";
         }
 
         if (formData.password !== formData.confirmPassword) {

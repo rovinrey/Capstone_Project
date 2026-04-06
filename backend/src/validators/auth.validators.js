@@ -9,8 +9,8 @@ const validateSignup = (req, res, next) => {
         return res.status(400).json({ message: 'All fields are required' });
     }
 
-    if (typeof user_name !== 'string' || user_name.trim().length < 2 || user_name.trim().length > 50) {
-        return res.status(400).json({ message: 'Username must be between 2 and 50 characters' });
+    if (typeof user_name !== 'string' || user_name.trim().length < 2 || user_name.trim().length > 100) {
+        return res.status(400).json({ message: 'Username must be between 2 and 100 characters' });
     }
 
     const trimmedIdentifier = String(identifier).trim();
