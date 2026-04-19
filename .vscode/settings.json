@@ -1,0 +1,10 @@
+{
+    "chat.agent.maxRequests": 50,
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "workbench.colorTheme": "One Dark Pro Night Flat",
+    "workbench.preferredDarkColorTheme": "One Dark Pro Darker",
+    "workbench.preferredHighContrastColorTheme": "One Dark Pro Darker",
+    "workbench.preferredHighContrastLightColorTheme": "One Dark Pro Darker",
+    "workbench.preferredLightColorTheme": "One Dark Pro Darker",
+    "editor.fontSize": 17
+}
