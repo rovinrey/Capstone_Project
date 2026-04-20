@@ -1,0 +1,15 @@
+# Environment variables (secrets, API keys, DB credentials)
+# Ignore ALL .env files except .env.example
+.env*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
